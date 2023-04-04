@@ -2,14 +2,42 @@ import type { ActionArgs, LoaderArgs} from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useActionData, useLoaderData, useSubmit } from "@remix-run/react";
 import { useCallback, useState } from "react";
-import { checkSessionCookie } from "~/server/auth.server";
+import { checkSessionCookie, signIn, signInWithToken } from "~/server/auth.server";
 import { getRestConfig } from "~/server/firebase.server";
 import { commitSession, getSession } from "~/server/sessions";
 import * as firebaseRest from "~/server/firebase-rest";
 import { LockClosedIcon } from "@heroicons/react/20/solid";
 
 export async function action({params, request}:ActionArgs) {
-  
+  const form = await request.formData();
+  const idToken = form.get("idToken");
+  let sessionCookie;
+  try {
+    if (typeof idToken === "string") {
+      sessionCookie = await signInWithToken(idToken);
+    } else {
+      const email = form.get("email");
+      const password = form.get("password");
+      const formError = json(
+        { error: "Please fill all fields!" },
+        { status: 400 }
+      );
+      if (typeof email !== "string") return formError;
+      if (typeof password !== "string") return formError;
+      sessionCookie = await signIn(email, password);
+    }
+    const session = await getSession(request.headers.get("cookie"));
+    session.set("session", sessionCookie);
+    return redirect("/", {
+      headers: {
+        "Set-Cookie": await commitSession(session),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return json({ error: String(error) }, { status: 401 });
+  }
+
 }
 
 export async function loader({params, request}:LoaderArgs) {
@@ -22,6 +50,9 @@ export async function loader({params, request}:LoaderArgs) {
     return redirect("/", { headers });
   }
   const { apiKey, domain } = getRestConfig();
+
+  // @ts-ignore
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const pageDetails ={
     logo: "https://firebasestorage.googleapis.com/v0/b/component-sites.appspot.com/o/furrymarketplace%2FFM%20logo%201.png?alt=media&token=c5e02204-27f3-4996-ac93-738f589826fb"
   }

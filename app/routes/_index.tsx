@@ -1,5 +1,6 @@
 import type { LoaderArgs, V2_MetaFunction } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
+import { json } from "react-router";
 import { getUserIfSignedIn } from "~/server/auth.server";
 
 export const meta: V2_MetaFunction = () => {
@@ -14,6 +15,7 @@ export const loader = async ({ request }: LoaderArgs) => {
   if(!isSignedIn){
     return redirect('/login')
   }
+  return json({})
 };
 
 

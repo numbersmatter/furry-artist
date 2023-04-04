@@ -22,7 +22,7 @@ interface UserDoc {
   profileArray: string[],
 }
 
-const dbBase = "database/version2";
+export const dbBase = "database/version2";
 
 export const mainDb = {
   profiles: () =>dataPoint(`${dbBase}/profiles/`),

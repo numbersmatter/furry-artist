@@ -1,8 +1,22 @@
-import type { V2_MetaFunction } from "@remix-run/node";
+import type { LoaderArgs, V2_MetaFunction } from "@remix-run/node";
+import { redirect } from "@remix-run/node";
+import { getUserIfSignedIn } from "~/server/auth.server";
 
 export const meta: V2_MetaFunction = () => {
   return [{ title: "New Remix App" }];
 };
+
+export const loader = async ({ request }: LoaderArgs) => {
+  const userRecord = await getUserIfSignedIn(request);
+
+  const isSignedIn = userRecord ? true : false;
+
+  if(!isSignedIn){
+    return redirect('/login')
+  }
+};
+
+
 
 export default function Index() {
   return (

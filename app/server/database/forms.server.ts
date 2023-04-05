@@ -23,18 +23,52 @@ export interface FormDoc {
   text: string;
   sectionOrder: string[];
 }
-export interface  FormSection{
+export interface FormSection {
   sectionId: string;
   fields: Field[];
   name: string;
   text: string;
-  type?: "imageUpload" | "fields"
-}[];
-
+  type?: "imageUpload" | "fields";
+}
 
 const formsDb = {
   forms: (profileId: string) =>
     dataPoint<FormDoc>(`${dbBase}/profiles/${profileId}/forms`),
+  sections: (profileId: string) =>
+    dataPoint<FormSection>(`${dbBase}/profiles/${profileId}/sections`),
+};
+
+export const getFormSections = async (profileId: string | undefined) => {
+  if (!profileId) {
+    return [];
+  }
+  const sectionsRef = formsDb.sections(profileId);
+  const sectionsSnap = await sectionsRef.get();
+
+  const sections = sectionsSnap.docs.map((snap) => ({
+    ...snap.data(),
+    sectionId: snap.id,
+  }));
+
+  return sections;
+};
+
+export const getFormSectionById = async ({
+  profileId,
+  sectionId,
+}: {
+  profileId: string | undefined;
+  sectionId: string | undefined;
+}) => {
+  if (!profileId || !sectionId) {
+    return undefined;
+  }
+
+  const formSectionRef = formsDb.sections(profileId).doc(sectionId);
+  const sectionSnap = await formSectionRef.get();
+  const sectionData = sectionSnap.data();
+
+  return sectionData ? { ...sectionData, sectionId } : undefined;
 };
 
 export const getFormById = async ({
@@ -44,13 +78,13 @@ export const getFormById = async ({
   profileId: string | undefined;
   formId: string | undefined;
 }) => {
-  if( !profileId || !formId){
-    return undefined
+  if (!profileId || !formId) {
+    return undefined;
   }
 
   const formDocRef = formsDb.forms(profileId).doc(formId);
   const formSnap = await formDocRef.get();
   const formData = formSnap.data();
 
-  return formData ? {...formData, formId} : undefined
+  return formData ? { ...formData, formId } : undefined;
 };

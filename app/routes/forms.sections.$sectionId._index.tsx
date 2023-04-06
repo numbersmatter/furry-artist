@@ -1,17 +1,25 @@
 import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/react/24/outline";
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import { Form, Link, useActionData, useLoaderData } from "@remix-run/react";
 import type { ReactNode } from "react";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import { addField, getFormSectionById } from "~/server/database/forms.server";
+import { addField, getFormSectionById, moveArrayElement, updateSectionDoc } from "~/server/database/forms.server";
 import type { Field } from "~/ui/StackedFields/StackFields";
 import * as z from "zod";
 
 export async function action({ params, request }: ActionArgs) {
   const userRecord = await requireAuth(request);
   const userDoc = await getUserDoc(userRecord.uid);
+  const sectionDoc = await getFormSectionById({
+    profileId: userDoc?.defaultProfile,
+    sectionId: params.sectionId,
+  })
+
+  if (!sectionDoc) {
+    return;
+  }
 
 
   let formData = await request.formData();
@@ -22,14 +30,16 @@ export async function action({ params, request }: ActionArgs) {
     fieldType: z.enum(["select", "longText", "shortText", "email"])
   })
 
-  if( _action ==="addField"){
-    const schemaCheck = FieldSchema.safeParse(values);
-    if(!schemaCheck.success){
-      return {error:true, issues: schemaCheck.error.issues}
-    }else{
+  const MoveSchema = z.string().min(1)
 
-      const fieldData= {
-        label:schemaCheck.data.label,
+  if (_action === "addField") {
+    const schemaCheck = FieldSchema.safeParse(values);
+    if (!schemaCheck.success) {
+      return { error: true, issues: schemaCheck.error.issues }
+    } else {
+
+      const fieldData = {
+        label: schemaCheck.data.label,
         type: schemaCheck.data.label,
       }
       await addField({
@@ -38,7 +48,52 @@ export async function action({ params, request }: ActionArgs) {
         field: fieldData
       })
     }
+  }
 
+  if (_action === "moveUp") {
+    const fieldId = values.fieldId
+    const schemaCheck = MoveSchema.safeParse(fieldId);
+    if (!schemaCheck.success) {
+      return { error: true, issues: schemaCheck.error.issues }
+    } else {
+      const currentFields = [...sectionDoc.fields];
+      const currentIndex = currentFields
+        .findIndex(field => field.fieldId === schemaCheck.data);
+
+      if (currentIndex < 1) { return; }
+      const newIndex = currentIndex - 1;
+
+      const newArray = moveArrayElement(sectionDoc.fields, currentIndex, newIndex)
+
+      await updateSectionDoc({
+        profileId: userDoc?.defaultProfile,
+        sectionId: params.sectionId,
+        updateData: {fields: newArray}
+      })
+    }
+  }
+  if (_action === "moveDown") {
+    const fieldId = values.fieldId
+    const schemaCheck = MoveSchema.safeParse(fieldId);
+    if (!schemaCheck.success) {
+      return { error: true, issues: schemaCheck.error.issues }
+    } else {
+      const currentFields = [...sectionDoc.fields];
+      const currentIndex = currentFields
+        .findIndex(field => field.fieldId === schemaCheck.data);
+
+      if (currentIndex < 0) { return json({success: false}); }
+      const newIndex = currentIndex + 1;
+
+      const newArray = moveArrayElement(sectionDoc.fields, currentIndex, newIndex)
+
+      await updateSectionDoc({
+        profileId: userDoc?.defaultProfile,
+        sectionId: params.sectionId,
+        updateData: {fields: newArray}
+      })
+      return json({success: true})
+    }
   }
 
   return json({});
@@ -134,7 +189,7 @@ function AddField() {
             />
           </div>
           <div
-            className="col-span-1 sm:col-span-3 sm:pt-5  sm:flex sm:justify-end " 
+            className="col-span-1 sm:col-span-3 sm:pt-5  sm:flex sm:justify-end "
           >
 
             <button
@@ -187,9 +242,9 @@ function FieldCard(props: {
       <div className="block h-20 px-4  bg-slate-300 items-center">
         {/* <div className="px-4 py-4 sm:px-6"> */}
         <div className="flex h-full items-center justify-between">
-          <p className="truncate text-sm font-medium text-indigo-600">
+          <Link to={`fields/${props.field.fieldId}`} className="truncate text-sm font-medium text-indigo-600">
             {props.field.label}
-          </p>
+          </Link>
           <div className="w-2/4 flex items-center justify-between">
             <div>
               <p>

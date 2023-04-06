@@ -37,6 +37,10 @@ const formsDb = {
     dataPoint<FormSection>(`${dbBase}/profiles/${profileId}/sections`),
 };
 
+export const addOptionToField =async ({ profileId, sectionId}:{}) => {
+  
+}
+
 export const addField = async ({
   profileId,
   sectionId,
@@ -44,7 +48,7 @@ export const addField = async ({
 }: {
   profileId: string | undefined;
   sectionId: string | undefined;
-  field: { label: string, type: string};
+  field: { label: string; type: string };
 }) => {
   if (!profileId || !sectionId) {
     return;
@@ -52,8 +56,25 @@ export const addField = async ({
   const fieldId = formsDb.sections(profileId).doc().id;
   const sectionRef = formsDb.sections(profileId).doc(sectionId);
   const updateData = {
-    fields: FieldValue.arrayUnion({...field, fieldId})
+    fields: FieldValue.arrayUnion({ ...field, fieldId }),
+  };
+  await sectionRef.update(updateData);
+};
+
+export const updateSectionDoc = async ({
+  profileId,
+  sectionId,
+  updateData,
+}: {
+  profileId: string | undefined;
+  sectionId: string | undefined;
+  updateData: Partial<FormSection>
+}) => {
+  if (!profileId || !sectionId) {
+    return;
   }
+  const sectionRef = formsDb.sections(profileId).doc(sectionId);
+
   await sectionRef.update(updateData);
 };
 
@@ -142,7 +163,7 @@ export const getFormById = async ({
 };
 
 export const moveArrayElement = (
-  arr: Array<string>,
+  arr: Array<any>,
   start: number,
   end: number
 ) => {

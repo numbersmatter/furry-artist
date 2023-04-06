@@ -44,7 +44,6 @@ export async function loader({ params, request }: LoaderArgs) {
   // }
 
   const sectionData: FormSection = {
-    sectionId: "profileSetup",
     name: "Profile Setup",
     text: "First choose your profile name. It must be unique.",
     fields: [{

@@ -53,13 +53,18 @@ export default function FormsLayOut() {
   return (
     // @ts-ignore
     <SideColumnLayout nav={navigation} navBarUser={userData}>
-      <FormsHeader displayName={userData.name}/>
-      <Outlet />
+      <div className="overflow-scroll">
+        <FormsHeader displayName={userData.name} />
+        <div className=" mx-auto max-w-7xl bg-[#2a9bb5] sm:px-6 lg:px-8">
+        <Outlet />
+        </div>
+
+      </div>
     </SideColumnLayout>
   );
 }
 
-function FormsHeader( props:{ displayName:string}) {
+function FormsHeader(props: { displayName: string }) {
   return (
     <header className="bg-gray-50 py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:flex xl:items-center xl:justify-between">
@@ -112,3 +117,5 @@ function FormsHeader( props:{ displayName:string}) {
     </header>
   )
 }
+
+

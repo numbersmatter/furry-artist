@@ -1,21 +1,67 @@
 import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/react/20/solid";
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Link, useFetcher, useLoaderData } from "@remix-run/react";
+import { Form, Link, useActionData, useFetcher, useLoaderData } from "@remix-run/react";
 import type { ReactNode } from "react";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
 import type { FormSection} from "~/server/database/forms.server";
+import { moveArrayElement, updateFormDocSectionOrder } from "~/server/database/forms.server";
 import { getFormById, getFormSections } from "~/server/database/forms.server";
+import type { Field } from "~/ui/StackedFields/StackFields";
+import StackedField from "~/ui/StackedFields/StackFields";
 
 export async function action({ params, request }: ActionArgs) {
-  let formData = await request.formData();
-  let { _action, ...values} =  Object.fromEntries(formData);
-  
-  if(_action ==="moveUp"){
-    
+  const userRecord = await requireAuth(request);
+  const userDoc = await getUserDoc(userRecord.uid);
+  const formDoc = await getFormById({
+    profileId: userDoc?.defaultProfile,
+    formId: params.formId
+  })
+  if (!formDoc) {
+    return json({})
   }
-  if(_action ==="moveDown"){
+
+  const sectionOrder = [...formDoc.sectionOrder];
+
+  let formData = await request.formData();
+  let { _action, ...values } = Object.fromEntries(formData);
+  console.log(formData)
+
+  const indexOfSectionId = sectionOrder.findIndex(sectionId => sectionId === values.sectionId)
+
+  if (indexOfSectionId < 0) {
+    return json({})
+  }
+
+  if (_action === "moveUp") {
+    const newIndexRaw = indexOfSectionId - 1;
+    const newIndex = newIndexRaw < 0 ? 0 : newIndexRaw;
+
+    const newSectionOrder = moveArrayElement(sectionOrder, indexOfSectionId, newIndex)
+
+    const writeToDb = await updateFormDocSectionOrder({
+      profileId: userDoc?.defaultProfile,
+      formId: params.formId,
+      newSectionOrder
+    });
+    return writeToDb;
+  }
+  if (_action === "moveDown") {
+    const newIndexRaw = indexOfSectionId + 1;
+
+    const newSectionOrder = moveArrayElement(
+      sectionOrder, 
+      indexOfSectionId, 
+      newIndexRaw
+    )
+
+    const writeToDb = await updateFormDocSectionOrder({
+      profileId: userDoc?.defaultProfile,
+      formId: params.formId,
+      newSectionOrder
+    });
+    return writeToDb;
 
   }
 
@@ -26,26 +72,43 @@ export async function loader({ params, request }: LoaderArgs) {
   const userRecord = await requireAuth(request);
   const userDoc = await getUserDoc(userRecord.uid);
 
-  const formData = await getFormById({
+  const formDoc = await getFormById({
     profileId: userDoc?.defaultProfile,
     formId: params.formId
   })
   const sections = await getFormSections(userDoc?.defaultProfile);
 
+  const unusedSections = sections.filter(section => !formDoc?.sectionOrder.includes(section.sectionId))
 
-  return json({ formData, sections });
+  const createNewOption = { label: "Create New Section", value:"create-new"}
+
+  const sectionOptions = unusedSections.map(section=> ({ label: section.name, value: section.sectionId}));
+
+  const allSectionOptions = [...sectionOptions, createNewOption]
+
+  const selectSectionField: Field ={
+    fieldId:"sectionId",
+    label:"Section To add",
+    type:"select",
+    options: allSectionOptions 
+  }
+
+
+  return json({ formDoc, sections, selectSectionField });
 }
 
 
 
-export default function FormIdPAge() {
-  const { formData, sections } = useLoaderData<typeof loader>();
+export default function FormIdPage() {
+  const { formDoc, sections, selectSectionField } = useLoaderData<typeof loader>();
+  const actionData = useActionData();
   return (
     <div className="px-0 py-0 sm:py-2 sm:px-4">
-      <SectionPanel name={formData?.name ?? ""} text={formData?.text ?? ""} >
+      {actionData ? <p>{JSON.stringify(actionData)}</p> : <p></p>}
+      <SectionPanel name={formDoc?.name ?? ""} text={formDoc?.text ?? ""} >
         <StackedList>
           {
-            formData?.sectionOrder.map(sectionId => {
+            formDoc?.sectionOrder.map(sectionId => {
               const formSection = sections
                 .find(section => section.sectionId === sectionId);
 
@@ -57,6 +120,8 @@ export default function FormIdPAge() {
             })
           }
         </StackedList>
+
+          <ActionPanel field={selectSectionField} />
       </SectionPanel>
     </div>
   );
@@ -97,11 +162,10 @@ function StackedList(props: {
 }
 
 
-function SectionCard( props: {
-    section: FormSection | undefined, 
-    sectionId: string
-  }) 
-{
+function SectionCard(props: {
+  section: FormSection | undefined,
+  sectionId: string
+}) {
   let fetcher = useFetcher();
   const section = props.section
 
@@ -154,24 +218,25 @@ function SectionCard( props: {
           </p>
           <div className="w-2/4 flex items-center justify-between">
             <div>
-              <Link to={section.sectionId}>
+              <Link to={props.sectionId}>
                 go to section
               </Link>
             </div>
-            <fetcher.Form className="ml-2 grid grid-cols-2 gap-4">
-              <input 
-                hidden 
-                name="sectionId" 
-                value={props.sectionId} 
+            <fetcher.Form method="POST" className="ml-2 grid grid-cols-2 gap-4">
+              <input
+                hidden
+                name="sectionId"
+                value={props.sectionId}
+                readOnly
               />
               <button
                 type="submit"
                 name="_action"
                 value={"moveUp"}
-                >
+              >
                 <ArrowUpIcon
                   className="mr-3 text-green-500 h-12 w-12 flex-shrink-0" aria-hidden="true"
-                  />
+                />
               </button>
               <button
                 type="submit"
@@ -189,5 +254,31 @@ function SectionCard( props: {
       {/* </div> */}
     </li>
 
+  )
+}
+
+function ActionPanel( props:{field: Field}) {
+  return (
+    <div className=" sm:col-span-6 overflow-hidden bg-white shadow sm:rounded-md">
+      <div className="px-4 py-5 sm:p-6">
+        <h3 className="text-base font-semibold leading-6 text-gray-900">
+          Add a Form Section
+        </h3>
+        <div className="mt-2 max-w-xl text-sm text-gray-500">
+          <p>Select a Section To Add</p>
+        </div>
+        <Form  className="mt-5 sm:flex sm:items-center">
+          <div className="w-full sm:max-w-xs">
+            <StackedField defaultValue="" field={props.field}/>
+          </div>
+          <button
+            type="submit"
+            className="mt-3 inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:ml-3 sm:mt-0 sm:w-auto"
+          >
+            Save
+          </button>
+        </Form>
+      </div>
+    </div>
   )
 }

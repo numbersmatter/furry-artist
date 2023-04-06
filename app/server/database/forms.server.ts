@@ -24,7 +24,6 @@ export interface FormDoc {
   sectionOrder: string[];
 }
 export interface FormSection {
-  sectionId: string;
   fields: Field[];
   name: string;
   text: string;
@@ -38,6 +37,59 @@ const formsDb = {
     dataPoint<FormSection>(`${dbBase}/profiles/${profileId}/sections`),
 };
 
+export const addField = async ({
+  profileId,
+  sectionId,
+  field,
+}: {
+  profileId: string | undefined;
+  sectionId: string | undefined;
+  field: { label: string, type: string};
+}) => {
+  if (!profileId || !sectionId) {
+    return;
+  }
+  const fieldId = formsDb.sections(profileId).doc().id;
+  const sectionRef = formsDb.sections(profileId).doc(sectionId);
+  const updateData = {
+    fields: FieldValue.arrayUnion({...field, fieldId})
+  }
+  await sectionRef.update(updateData);
+};
+
+export const updateFormDocSectionOrder = async ({
+  profileId,
+  formId,
+  newSectionOrder,
+}: {
+  profileId: string | undefined;
+  formId: string | undefined;
+  newSectionOrder: string[];
+}) => {
+  if (!profileId || !formId) {
+    return;
+  }
+  const formDocRef = formsDb.forms(profileId).doc(formId);
+  const writeToDb = await formDocRef.update({ sectionOrder: newSectionOrder });
+  return writeToDb;
+};
+
+export const createFormSection = async ({
+  profileId,
+  sectionData,
+}: {
+  profileId: string | undefined;
+  sectionData: FormSection;
+}) => {
+  if (!profileId) {
+    return undefined;
+  }
+  const formSectionRef = formsDb.sections(profileId).doc();
+
+  const writeToDb = await formSectionRef.create(sectionData);
+
+  return { writeToDb, sectionId: formSectionRef.id };
+};
 export const getFormSections = async (profileId: string | undefined) => {
   if (!profileId) {
     return [];
@@ -87,4 +139,25 @@ export const getFormById = async ({
   const formData = formSnap.data();
 
   return formData ? { ...formData, formId } : undefined;
+};
+
+export const moveArrayElement = (
+  arr: Array<string>,
+  start: number,
+  end: number
+) => {
+  const endLessThanLength = end < arr.length;
+  if (!endLessThanLength) {
+    return arr;
+  }
+  if (end < 0) {
+    return arr;
+  }
+
+  const modArray = [...arr];
+
+  modArray.splice(start, 1);
+  modArray.splice(end, 0, arr[start]);
+
+  return modArray;
 };

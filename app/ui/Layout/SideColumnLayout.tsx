@@ -35,16 +35,7 @@ export default function SideColumnLayout(
 
 
   return (
-    <>
-      {/*
-        This example requires updating your template:
-
-        ```
-        <html class="h-full bg-gray-50">
-        <body class="h-full overflow-hidden">
-        ```
-      */}
-      <div className="flex h-full">
+      <div className="flex min-h-screen  bg-[#2a9bb5]">
         <Transition.Root show={mobileMenuOpen} as={Fragment}>
           <Dialog as="div" className="relative z-40 lg:hidden" onClose={setMobileMenuOpen}>
             <Transition.Child
@@ -235,6 +226,6 @@ export default function SideColumnLayout(
           {props.children}
         </div>
       </div>
-    </>
+   
   )
 }

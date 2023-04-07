@@ -24,7 +24,8 @@ export interface FormDoc {
   sectionOrder: string[];
 }
 export interface FormSection {
-  fields: Field[];
+  fieldOrder: string[];
+  fieldData:{ [fieldId:string]: Field};
   name: string;
   text: string;
   type?: "imageUpload" | "fields";
@@ -37,9 +38,83 @@ const formsDb = {
     dataPoint<FormSection>(`${dbBase}/profiles/${profileId}/sections`),
 };
 
-export const addOptionToField =async ({ profileId, sectionId}:{}) => {
-  
-}
+export const deleteField = async ({
+  profileId,
+  sectionId,
+  fieldId,
+}: {
+  profileId: string | undefined;
+  sectionId: string | undefined;
+  fieldId: string | undefined;
+}) => {
+  if (!profileId || !sectionId || !fieldId) { return; }
+  const sectionRef = formsDb.sections(profileId).doc(sectionId);
+
+  const updateData = {
+    fieldOrder: FieldValue.arrayRemove(fieldId),
+    [`fieldData.${fieldId}`]: FieldValue.delete(),
+  };
+
+  await sectionRef.update(updateData);
+};
+
+export const createNewForm = async ({
+  profileId,
+  data
+}: {
+  profileId: string | undefined;
+  data: FormDoc;
+}) => {
+  if (!profileId) { return; }
+  const formDocRef = formsDb.forms(profileId).doc();
+  const writeToDb = await formDocRef.create(data);
+  return { writeToDb, formId: formDocRef.id };
+};
+
+export const addOptionToField = async ({
+  profileId,
+  sectionId,
+  fieldId,
+  optionLabel,
+}: {
+  profileId: string | undefined;
+  sectionId: string | undefined;
+  fieldId: string | undefined;
+  optionLabel: string;
+}) => {
+  if (!profileId || !sectionId || !fieldId) {
+    return;
+  }
+  const fieldValue = formsDb.sections(profileId).doc().id;
+  const sectionRef = formsDb.sections(profileId).doc(sectionId);
+  const sectionSnap = await sectionRef.get();
+  const sectionData = sectionSnap.data();
+  if (!sectionData) {
+    return;
+  }
+
+  const updateData = {
+    [`fieldData.${fieldId}.options`]: FieldValue.arrayUnion({label: optionLabel, value: fieldValue})
+  };
+
+  // const fields = sectionData.fieldOrder.map((fieldId) => sectionData.fieldData[fieldId]);
+  // const fieldIndex = fields.findIndex((field) => field.fieldId === fieldId);
+  // if (fieldIndex < 0) {
+  //   return;
+  // }
+  // const field = fields[fieldIndex];
+  // const options = field.options || [];
+  // const newOptions = [...options, { label: optionLabel, value: fieldValue }];
+
+  // const modFields = [...fields];
+  // modFields[fieldIndex] = { ...field, options: newOptions };
+  // const updateData = {
+  //   fields: modFields,
+  // };
+
+  await sectionRef.update(updateData);
+
+};
 
 export const addField = async ({
   profileId,
@@ -56,8 +131,10 @@ export const addField = async ({
   const fieldId = formsDb.sections(profileId).doc().id;
   const sectionRef = formsDb.sections(profileId).doc(sectionId);
   const updateData = {
-    fields: FieldValue.arrayUnion({ ...field, fieldId }),
+    fieldOrder: FieldValue.arrayUnion( fieldId ),
+    [`fieldData.${fieldId}`]: { ...field, fieldId },
   };
+  // @ts-ignore
   await sectionRef.update(updateData);
 };
 
@@ -68,14 +145,17 @@ export const updateSectionDoc = async ({
 }: {
   profileId: string | undefined;
   sectionId: string | undefined;
-  updateData: Partial<FormSection>
+  updateData: Partial<FormSection>;
 }) => {
   if (!profileId || !sectionId) {
     return;
   }
   const sectionRef = formsDb.sections(profileId).doc(sectionId);
 
-  await sectionRef.update(updateData);
+  // @ts-ignore
+  const writeToDb = await sectionRef.update(updateData);
+
+  return writeToDb;
 };
 
 export const updateFormDocSectionOrder = async ({
@@ -160,6 +240,26 @@ export const getFormById = async ({
   const formData = formSnap.data();
 
   return formData ? { ...formData, formId } : undefined;
+};
+
+export const addSectionToForm = async ({
+  profileId,
+  formId,
+  sectionId,
+}: {
+  profileId: string | undefined;
+  formId: string | undefined;
+  sectionId: string | undefined;
+}) => {
+  if (!profileId || !formId || !sectionId) {
+    return{error: true, message: 'Missing required data'};
+  }
+  const formDocRef = formsDb.forms(profileId).doc(formId);
+
+  const updateData = {
+    sectionOrder: FieldValue.arrayUnion(sectionId),
+  };
+  await formDocRef.update(updateData);
 };
 
 export const moveArrayElement = (

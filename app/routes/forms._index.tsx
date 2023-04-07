@@ -29,7 +29,7 @@ export default function FormsIndex() {
   console.log(formsList)
   return (
     <div className="mx-0 sm:mx-4 sm:my-4">
-      <StackedList>
+      <ul className="grid grid-cols-1 gap-4"  >
         {
           formsList.map((form)=>
           // @ts-ignore
@@ -37,7 +37,18 @@ export default function FormsIndex() {
           )
           
         }
-      </StackedList>
+        <li>
+          <Link to="/forms/new" className="block bg-white sm:rounded-lg hover:bg-gray-50">
+            <div className="px-4 py-4 sm:px-6">
+              <div className="flex items-center justify-between">
+                <p className="truncate text-sm font-medium text-indigo-600">
+                  Create new form
+                </p>
+              </div>
+            </div>
+          </Link>
+        </li>
+      </ul>
     </div>
   );
 }
@@ -92,7 +103,7 @@ function FormsCard( props: {form: {formId:string, name: string, text:string}}){
 
   return (
       <li >
-        <Link to={form.formId} className="block hover:bg-gray-50">
+        <Link to={form.formId} className="block bg-white sm:rounded-lg hover:bg-gray-50">
           <div className="px-4 py-4 sm:px-6">
             <div className="flex items-center justify-between">
               <p className="truncate text-sm font-medium text-indigo-600"> 

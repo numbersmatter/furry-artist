@@ -3,9 +3,10 @@ import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useFetcher, useLoaderData } from "@remix-run/react";
 import type { ReactNode } from "react";
+import { z } from "zod";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import type { FormSection} from "~/server/database/forms.server";
+import { addSectionToForm, FormSection } from "~/server/database/forms.server";
 import { moveArrayElement, updateFormDocSectionOrder } from "~/server/database/forms.server";
 import { getFormById, getFormSections } from "~/server/database/forms.server";
 import type { Field } from "~/ui/StackedFields/StackFields";
@@ -19,7 +20,7 @@ export async function action({ params, request }: ActionArgs) {
     formId: params.formId
   })
   if (!formDoc) {
-    return json({})
+    return json({error:true, errorData: "Form not found"})
   }
 
   const sectionOrder = [...formDoc.sectionOrder];
@@ -30,8 +31,29 @@ export async function action({ params, request }: ActionArgs) {
 
   const indexOfSectionId = sectionOrder.findIndex(sectionId => sectionId === values.sectionId)
 
-  if (indexOfSectionId < 0) {
-    return json({})
+  // if (indexOfSectionId < 0) {
+  //   return json({})
+  // }
+
+  const AddSchema = z.object({
+    sectionId: z.string().min(2, "Section ID must be at least 2 characters"),
+  })
+
+  if (_action === "addSection") {
+    const schemaCheck = AddSchema.safeParse(values);
+    if (!schemaCheck.success) {
+      return { error: true, errorData: schemaCheck.error.issues }
+    } else {
+      if(schemaCheck.data.sectionId === "create-new"){
+        return redirect(`/forms/${params.formId}/sections/create-new`)
+      }
+      await addSectionToForm({
+        profileId: userDoc?.defaultProfile,
+        formId: params.formId,
+        sectionId: schemaCheck.data.sectionId,
+      })
+      return { error: false, errorData: null }
+    }
   }
 
   if (_action === "moveUp") {
@@ -51,8 +73,8 @@ export async function action({ params, request }: ActionArgs) {
     const newIndexRaw = indexOfSectionId + 1;
 
     const newSectionOrder = moveArrayElement(
-      sectionOrder, 
-      indexOfSectionId, 
+      sectionOrder,
+      indexOfSectionId,
       newIndexRaw
     )
 
@@ -65,7 +87,7 @@ export async function action({ params, request }: ActionArgs) {
 
   }
 
-  return json({});
+  
 }
 
 export async function loader({ params, request }: LoaderArgs) {
@@ -80,17 +102,17 @@ export async function loader({ params, request }: LoaderArgs) {
 
   const unusedSections = sections.filter(section => !formDoc?.sectionOrder.includes(section.sectionId))
 
-  const createNewOption = { label: "Create New Section", value:"create-new"}
+  const createNewOption = { label: "Create New Section", value: "create-new" }
 
-  const sectionOptions = unusedSections.map(section=> ({ label: section.name, value: section.sectionId}));
+  const sectionOptions = unusedSections.map(section => ({ label: section.name, value: section.sectionId }));
 
   const allSectionOptions = [...sectionOptions, createNewOption]
 
-  const selectSectionField: Field ={
-    fieldId:"sectionId",
-    label:"Section To add",
-    type:"select",
-    options: allSectionOptions 
+  const selectSectionField: Field = {
+    fieldId: "sectionId",
+    label: "Section To add",
+    type: "select",
+    options: allSectionOptions
   }
 
 
@@ -121,7 +143,7 @@ export default function FormIdPage() {
           }
         </StackedList>
 
-          <ActionPanel field={selectSectionField} />
+        <ActionPanel field={selectSectionField} />
       </SectionPanel>
     </div>
   );
@@ -257,7 +279,7 @@ function SectionCard(props: {
   )
 }
 
-function ActionPanel( props:{field: Field}) {
+function ActionPanel(props: { field: Field }) {
   return (
     <div className=" sm:col-span-6 overflow-hidden bg-white shadow sm:rounded-md">
       <div className="px-4 py-5 sm:p-6">
@@ -267,11 +289,13 @@ function ActionPanel( props:{field: Field}) {
         <div className="mt-2 max-w-xl text-sm text-gray-500">
           <p>Select a Section To Add</p>
         </div>
-        <Form  className="mt-5 sm:flex sm:items-center">
+        <Form replace method="POST" className="mt-5 sm:flex sm:items-center">
           <div className="w-full sm:max-w-xs">
-            <StackedField defaultValue="" field={props.field}/>
+            <StackedField defaultValue="" field={props.field} />
           </div>
           <button
+            name="_action"
+            value="addSection"
             type="submit"
             className="mt-3 inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:ml-3 sm:mt-0 sm:w-auto"
           >

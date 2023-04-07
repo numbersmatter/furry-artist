@@ -5,7 +5,7 @@ import { ReactNode } from "react";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
 import { createFormSection, FormSection } from "~/server/database/forms.server";
-import StackedField from "~/ui/StackedFields/StackFields";
+import StackedField, { Field } from "~/ui/StackedFields/StackFields";
 import * as z from "zod";
 import { ZodIssue } from "zod";
 
@@ -35,7 +35,8 @@ export async function action({ params, request }: ActionArgs) {
   }else{
     const sectionData ={
       ...inputCheck.data,
-      fields:[]
+      fieldOrder:[],
+      fieldData:{}
     }
     const writeToDb = await createFormSection({
       profileId,
@@ -55,7 +56,7 @@ export async function loader({ params, request }: LoaderArgs) {
   const userRecord = await requireAuth(request);
   const userDoc = await getUserDoc(userRecord.uid);
 
-  const sectionData: FormSection = {
+  const sectionData: {name: string, text: string, fields: Field[], type:"fields" | "imageUpload"} = {
     name: "Create New Section",
     text: "Enter sections name and descriptive text.",
     fields: [

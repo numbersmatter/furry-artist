@@ -40,13 +40,14 @@ export async function action({ params, request }: ActionArgs) {
 
       const fieldData = {
         label: schemaCheck.data.label,
-        type: schemaCheck.data.label,
+        type: schemaCheck.data.fieldType,
       }
-      await addField({
+      const modFields =await addField({
         profileId: userDoc?.defaultProfile,
         sectionId: params.sectionId,
         field: fieldData
       })
+      return {error:false, fields: modFields}
     }
   }
 
@@ -56,20 +57,19 @@ export async function action({ params, request }: ActionArgs) {
     if (!schemaCheck.success) {
       return { error: true, issues: schemaCheck.error.issues }
     } else {
-      const currentFields = [...sectionDoc.fields];
-      const currentIndex = currentFields
-        .findIndex(field => field.fieldId === schemaCheck.data);
+      const currentFieldOrder = [...sectionDoc.fieldOrder];
+      const currentIndex = currentFieldOrder
+      .findIndex((fieldId) => fieldId === schemaCheck.data);
 
-      if (currentIndex < 1) { return; }
       const newIndex = currentIndex - 1;
-
-      const newArray = moveArrayElement(sectionDoc.fields, currentIndex, newIndex)
+      const newArray = moveArrayElement(sectionDoc.fieldOrder, currentIndex, newIndex)
 
       await updateSectionDoc({
         profileId: userDoc?.defaultProfile,
         sectionId: params.sectionId,
-        updateData: {fields: newArray}
+        updateData: {fieldOrder: newArray}
       })
+      return json({success: true})
     }
   }
   if (_action === "moveDown") {
@@ -78,19 +78,18 @@ export async function action({ params, request }: ActionArgs) {
     if (!schemaCheck.success) {
       return { error: true, issues: schemaCheck.error.issues }
     } else {
-      const currentFields = [...sectionDoc.fields];
-      const currentIndex = currentFields
-        .findIndex(field => field.fieldId === schemaCheck.data);
 
-      if (currentIndex < 0) { return json({success: false}); }
+      const currentFieldOrder = [...sectionDoc.fieldOrder];
+      const currentIndex = currentFieldOrder
+      .findIndex((fieldId) => fieldId === schemaCheck.data);
+
       const newIndex = currentIndex + 1;
-
-      const newArray = moveArrayElement(sectionDoc.fields, currentIndex, newIndex)
+      const newArray = moveArrayElement(sectionDoc.fieldOrder, currentIndex, newIndex)
 
       await updateSectionDoc({
         profileId: userDoc?.defaultProfile,
         sectionId: params.sectionId,
-        updateData: {fields: newArray}
+        updateData: {fieldOrder: newArray}
       })
       return json({success: true})
     }
@@ -111,15 +110,24 @@ export async function loader({ params, request }: LoaderArgs) {
     throw new Response("No section by that Id", { status: 404 })
   }
 
+  const sectionFields = formSectionDoc.fieldOrder.map((fieldId) => {
+    const field = formSectionDoc.fieldData[fieldId];
+    return field;
+  });
 
-  return json({ formSectionDoc });
+
+  return json({ formSectionDoc, sectionFields });
 }
 
 
 
 export default function EditFormSection() {
-  const { formSectionDoc } = useLoaderData<typeof loader>();
+  const { formSectionDoc, sectionFields } = useLoaderData<typeof loader>();
   const actionData = useActionData();
+
+  const fields = formSectionDoc.fieldOrder.map((fieldId) => {
+    return formSectionDoc.fieldData[fieldId]
+  })
 
   return (
     <div className="px-0 py-0 sm:py-2 sm:px-4">
@@ -127,7 +135,7 @@ export default function EditFormSection() {
       <SectionPanel name={formSectionDoc.name} text={formSectionDoc.text} >
         <ul className=" col-span-1 sm:col-span-6">
           {
-            formSectionDoc.fields.map((field) =>
+            fields.map((field) =>
               <li key={field.fieldId}>
                 <FieldCard field={field} />
               </li>

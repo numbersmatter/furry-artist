@@ -42,12 +42,12 @@ export async function action({ params, request }: ActionArgs) {
         label: schemaCheck.data.label,
         type: schemaCheck.data.fieldType,
       }
-      const modFields =await addField({
+      const modFields = await addField({
         profileId: userDoc?.defaultProfile,
         sectionId: params.sectionId,
         field: fieldData
       })
-      return {error:false, fields: modFields}
+      return { error: false, fields: modFields }
     }
   }
 
@@ -59,7 +59,7 @@ export async function action({ params, request }: ActionArgs) {
     } else {
       const currentFieldOrder = [...sectionDoc.fieldOrder];
       const currentIndex = currentFieldOrder
-      .findIndex((fieldId) => fieldId === schemaCheck.data);
+        .findIndex((fieldId) => fieldId === schemaCheck.data);
 
       const newIndex = currentIndex - 1;
       const newArray = moveArrayElement(sectionDoc.fieldOrder, currentIndex, newIndex)
@@ -67,9 +67,9 @@ export async function action({ params, request }: ActionArgs) {
       await updateSectionDoc({
         profileId: userDoc?.defaultProfile,
         sectionId: params.sectionId,
-        updateData: {fieldOrder: newArray}
+        updateData: { fieldOrder: newArray }
       })
-      return json({success: true})
+      return json({ success: true })
     }
   }
   if (_action === "moveDown") {
@@ -81,7 +81,7 @@ export async function action({ params, request }: ActionArgs) {
 
       const currentFieldOrder = [...sectionDoc.fieldOrder];
       const currentIndex = currentFieldOrder
-      .findIndex((fieldId) => fieldId === schemaCheck.data);
+        .findIndex((fieldId) => fieldId === schemaCheck.data);
 
       const newIndex = currentIndex + 1;
       const newArray = moveArrayElement(sectionDoc.fieldOrder, currentIndex, newIndex)
@@ -89,9 +89,9 @@ export async function action({ params, request }: ActionArgs) {
       await updateSectionDoc({
         profileId: userDoc?.defaultProfile,
         sectionId: params.sectionId,
-        updateData: {fieldOrder: newArray}
+        updateData: { fieldOrder: newArray }
       })
-      return json({success: true})
+      return json({ success: true })
     }
   }
 
@@ -115,14 +115,16 @@ export async function loader({ params, request }: LoaderArgs) {
     return field;
   });
 
+  const saveUrl = `/forms/sections/`
 
-  return json({ formSectionDoc, sectionFields });
+
+  return json({ formSectionDoc, sectionFields, saveUrl });
 }
 
 
 
 export default function EditFormSection() {
-  const { formSectionDoc, sectionFields } = useLoaderData<typeof loader>();
+  const { formSectionDoc, sectionFields, saveUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData();
 
   const fields = formSectionDoc.fieldOrder.map((fieldId) => {
@@ -133,20 +135,35 @@ export default function EditFormSection() {
     <div className="px-0 py-0 sm:py-2 sm:px-4">
       {actionData ? <p>{JSON.stringify(actionData)}</p> : <p></p>}
       <SectionPanel name={formSectionDoc.name} text={formSectionDoc.text} >
-        <ul className=" col-span-1 sm:col-span-6">
-          {
-            fields.map((field) =>
-              <li key={field.fieldId}>
-                <FieldCard field={field} />
+        {
+          formSectionDoc.type === "imageUpload"
+            ? <p
+            className="col-span-1 sm:col-span-6"
+            >Image Upload Form sections can have no fields</p>
+            :
+            <ul className=" col-span-1 sm:col-span-6">
+              {
+                fields.map((field) =>
+                  <li key={field.fieldId}>
+                    <FieldCard field={field} />
+                  </li>
+                )
+              }
+              <li>
+                <AddField />
               </li>
-            )
-          }
-          <li>
-            <AddField />
-          </li>
-        </ul>
+            </ul>
+        }
 
       </SectionPanel>
+      <div className=" py-4 flex justify-end">
+        <Link to={saveUrl}
+          className="bg-gray-50 text-gray-900 px-4 py-2 rounded-md shadow-sm text-sm font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Save
+        </Link>
+
+      </div>
+
     </div>
   );
 }

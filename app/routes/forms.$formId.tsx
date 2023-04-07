@@ -20,7 +20,7 @@ export async function action({ params, request }: ActionArgs) {
     formId: params.formId
   })
   if (!formDoc) {
-    return json({error:true, errorData: "Form not found"})
+    return json({ error: true, errorData: "Form not found" })
   }
 
   const sectionOrder = [...formDoc.sectionOrder];
@@ -44,8 +44,8 @@ export async function action({ params, request }: ActionArgs) {
     if (!schemaCheck.success) {
       return { error: true, errorData: schemaCheck.error.issues }
     } else {
-      if(schemaCheck.data.sectionId === "create-new"){
-        return redirect(`/forms/${params.formId}/sections/create-new`)
+      if (schemaCheck.data.sectionId === "create-new") {
+        return redirect(`/forms/sections/create-new`)
       }
       await addSectionToForm({
         profileId: userDoc?.defaultProfile,
@@ -87,7 +87,7 @@ export async function action({ params, request }: ActionArgs) {
 
   }
 
-  
+
 }
 
 export async function loader({ params, request }: LoaderArgs) {
@@ -115,14 +115,15 @@ export async function loader({ params, request }: LoaderArgs) {
     options: allSectionOptions
   }
 
+  const saveUrl = `/forms/`
 
-  return json({ formDoc, sections, selectSectionField });
+  return json({ formDoc, sections, selectSectionField, saveUrl });
 }
 
 
 
 export default function FormIdPage() {
-  const { formDoc, sections, selectSectionField } = useLoaderData<typeof loader>();
+  const { formDoc, sections, selectSectionField, saveUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData();
   return (
     <div className="px-0 py-0 sm:py-2 sm:px-4">
@@ -145,6 +146,14 @@ export default function FormIdPage() {
 
         <ActionPanel field={selectSectionField} />
       </SectionPanel>
+      <div className=" py-4 flex justify-end">
+        <Link to={saveUrl}
+          className="bg-gray-50 text-gray-900 px-4 py-2 rounded-md shadow-sm text-sm font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Save
+        </Link>
+
+      </div>
+
     </div>
   );
 }

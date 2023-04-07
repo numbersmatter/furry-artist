@@ -21,30 +21,30 @@ export async function action({ params, request }: ActionArgs) {
     name: z.string().min(5, "Section Title must be atleast  5 characters"),
     text: z.string(),
     type: z.enum(["fields", "imageUpload"])
-  }) 
+  })
 
   const inputCheck = SectionSchema.safeParse(values);
 
-  if(!inputCheck.success){
-    const data ={
+  if (!inputCheck.success) {
+    const data = {
       error: true,
       errorData: inputCheck.error.issues,
       errorType: "schema",
     }
     return data;
-  }else{
-    const sectionData ={
+  } else {
+    const sectionData = {
       ...inputCheck.data,
-      fieldOrder:[],
-      fieldData:{}
+      fieldOrder: [],
+      fieldData: {}
     }
     const writeToDb = await createFormSection({
       profileId,
       sectionData
     })
 
-    if(!writeToDb){
-      return { error: true, errorData:[], errorType: "database"}
+    if (!writeToDb) {
+      return { error: true, errorData: [], errorType: "database" }
     }
 
     return redirect(`/forms/sections/${writeToDb.sectionId}`)
@@ -56,30 +56,30 @@ export async function loader({ params, request }: LoaderArgs) {
   const userRecord = await requireAuth(request);
   const userDoc = await getUserDoc(userRecord.uid);
 
-  const sectionData: {name: string, text: string, fields: Field[], type:"fields" | "imageUpload"} = {
+  const sectionData: { name: string, text: string, fields: Field[], type: "fields" | "imageUpload" } = {
     name: "Create New Section",
     text: "Enter sections name and descriptive text.",
     fields: [
       {
-      fieldId: "name",
-      label: "Section Title",
-      type: "shortText"
-    },
+        fieldId: "name",
+        label: "Section Title",
+        type: "shortText"
+      },
       {
-      fieldId: "text",
-      label: "Section Description",
-      type: "longText"
-    },
+        fieldId: "text",
+        label: "Section Description",
+        type: "longText"
+      },
       {
-      fieldId: "type",
-      label: "Section Type",
-      type: "select",
-      options:[
-        {label:"Regular", value: "fields"},
-        {label:"Image Upload", value: "imageUpload"},
-      ]
-    },
-  ],
+        fieldId: "type",
+        label: "Section Type",
+        type: "select",
+        options: [
+          { label: "Regular", value: "fields" },
+          { label: "Image Upload", value: "imageUpload" },
+        ]
+      },
+    ],
     type: "fields"
   }
 
@@ -89,48 +89,42 @@ export async function loader({ params, request }: LoaderArgs) {
 
 
 export default function FormSections() {
-  const {sectionData } = useLoaderData<typeof loader>();
+  const { sectionData } = useLoaderData<typeof loader>();
   const actionData = useActionData();
   return (
-    <div className=" bg-[#2a9bb5] flex flex-grow flex-col ">
-      <div className="mx-0 sm:mx-auto">
+    <div className="px-0 py-0 sm:py-4 sm:px-4">
+      {actionData ? <p> {JSON.stringify(actionData)} </p> : <p></p>}
+      <Form method="POST">
+        <SectionPanel name={sectionData.name} text={sectionData.text}>
+          {
+            sectionData.fields.map((field) => {
+              const errorObj = actionData ?? { errorData: [] }
+              const fieldError = errorObj.errorData
+                // @ts-ignore
+                .filter((issue) => issue.path[0] === field.fieldId)
+              const errorIssue = fieldError[0] ?? undefined
+              const errorText = errorIssue ? errorIssue.message : ""
+              const defaultValue = "";
 
-        <div className=" pt-6 pb-5">
-          {actionData ? <p> {JSON.stringify(actionData)} </p> : <p></p>}
-          <Form method="POST">
-            <SectionPanel name={sectionData.name} text={sectionData.text}>
-              {
-                sectionData.fields.map((field) => {
-                  const errorObj = actionData ?? { errorData: [] }
-                  const fieldError = errorObj.errorData
-                  // @ts-ignore
-                  .filter((issue)=> issue.path[0] === field.fieldId)
-                  const errorIssue = fieldError[0] ?? undefined
-                  const errorText = errorIssue ? errorIssue.message : ""
-                  const defaultValue = "";
-
-                  return <StackedField
-                    key={field.fieldId}
-                    field={field}
-                    errorText={errorText}
-                    defaultValue={defaultValue}
-                  />
-                }
-                )
-              }
-            </SectionPanel>
-            <div className="py-3 flex justify-end">
-              <button
-                type="submit"
-                className="ml-3 inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              >
-                Save
-              </button>
-            </div>
-          </Form>
+              return <StackedField
+                key={field.fieldId}
+                field={field}
+                errorText={errorText}
+                defaultValue={defaultValue}
+              />
+            }
+            )
+          }
+        </SectionPanel>
+        <div className="py-3 flex justify-end">
+          <button
+            type="submit"
+            className="ml-3 inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            Save
+          </button>
         </div>
-      </div>
-
+      </Form>
     </div>
   );
 }

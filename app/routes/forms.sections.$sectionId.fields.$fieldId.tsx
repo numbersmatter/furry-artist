@@ -119,7 +119,7 @@ export default function SectionField() {
             className="bg-red-400 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
 
-            delete
+            Delete This Field
           </button>
         </Form>
       </SectionPanel>

@@ -6,7 +6,8 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import { addSectionToForm, FormSection } from "~/server/database/forms.server";
+import type { FormSection } from "~/server/database/forms.server";
+import { addSectionToForm } from "~/server/database/forms.server";
 import { moveArrayElement, updateFormDocSectionOrder } from "~/server/database/forms.server";
 import { getFormById, getFormSections } from "~/server/database/forms.server";
 import type { Field } from "~/ui/StackedFields/StackFields";
@@ -98,7 +99,12 @@ export async function loader({ params, request }: LoaderArgs) {
     profileId: userDoc?.defaultProfile,
     formId: params.formId
   })
-  const sections = await getFormSections(userDoc?.defaultProfile);
+
+  if (!formDoc) {
+    return redirect("/forms")
+  }
+
+  const sections = await getFormSections(userDoc?.defaultProfile) ?? [];
 
   const unusedSections = sections.filter(section => !formDoc?.sectionOrder.includes(section.sectionId))
 

@@ -23,6 +23,14 @@ export interface FormDoc {
   text: string;
   sectionOrder: string[];
 }
+
+export interface FormWithStatus extends FormDoc {
+  status: "open" | "closed";
+  openId: string;
+  lastUpdated: Date;
+  formId: string;
+  profileId: string;
+}
 export interface FormSection {
   fieldOrder: string[];
   fieldData:{ [fieldId:string]: Field};
@@ -37,6 +45,17 @@ const formsDb = {
   sections: (profileId: string) =>
     dataPoint<FormSection>(`${dbBase}/profiles/${profileId}/sections`),
 };
+
+export const getAllForms = async ({
+  profileId
+}:{ profileId: string | undefined;
+}) => {
+  if (!profileId) { return []; }
+  const colRef = formsDb.forms(profileId);
+  const colSnap = await colRef.get();
+  const formsDocs = colSnap.docs.map((snap )=>({...snap.data(), formId: snap.id}))
+  return formsDocs;
+}
 
 export const deleteField = async ({
   profileId,

@@ -4,3 +4,7 @@ node_modules
 /build
 /public/build
 .env
+.env copy
+.env.local
+env.text
+env.txt

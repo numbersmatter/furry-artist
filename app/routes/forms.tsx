@@ -34,7 +34,7 @@ export async function loader({ params, request }: LoaderArgs) {
   if (!userDoc) {
     throw new Response("no user doc", { status: 401 })
   }
-  const pageHeaderData = await getProfilePageHeaderDoc("milachu92")
+  const pageHeaderData = await getProfilePageHeaderDoc(userDoc.defaultProfile ?? "no-profile")
 
   const userData = {
     name: pageHeaderData?.displayName ?? "",

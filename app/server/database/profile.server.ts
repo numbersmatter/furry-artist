@@ -20,8 +20,8 @@ export const setProfilePageHeaderDoc = async ({
   profileId,
   data,
 }: {
-  profileId: string;
-  data: any;
+  profileId: string,
+  data: { avatar?:string, displayName?: string, bannerImage?: string } 
 }) => {
   const docRef = mainDb
     .profiles()

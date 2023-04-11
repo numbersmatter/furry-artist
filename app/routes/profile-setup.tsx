@@ -4,13 +4,15 @@ import { useActionData, useLoaderData } from "@remix-run/react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { requireAuth } from "~/server/auth.server";
-import { getUserDoc } from "~/server/database/db.server";
+import { createProfileDoc, getProfileDoc, getUserDoc, updateUserDoc } from "~/server/database/db.server";
 import { Form } from "@remix-run/react"
 import StackedField from "~/ui/StackedFields/StackFields";
-import { FormSection } from "~/server/database/forms.server";
+import { FormSection, FormSectionDisplay } from "~/server/database/forms.server";
 import * as z from "zod"
+import { UserRecord } from "firebase-admin/auth";
 
 export async function action({ params, request }: ActionArgs) {
+  const userRecord = await requireAuth(request);
   const formData = await request.formData();
   const profileId = formData.get("profileId");
 
@@ -18,21 +20,34 @@ export async function action({ params, request }: ActionArgs) {
 
   const inputCheck = ProfileSchema.safeParse(profileId);
 
-  if(!inputCheck.success){
+  if (!inputCheck.success) {
     const data = {
       error: true,
       errorData: inputCheck.error.issues
     }
     return data;
-  }else{
-    const data={
+  } else {
+    const data = {
       error: false,
       errorData: []
     };
-    return data;
+    const profileNameRaw = inputCheck.data;
+    const profileName = profileNameRaw.toLowerCase();
+    const profileDoc = await getProfileDoc(profileName);
+    if (profileDoc) {
+      const data = {
+        error: true,
+        errorData: ["Profile name already exists"]
+      }
+      return data;
+    } else {
+      const writeProfileDoc = await createProfileDoc(profileName);
+      const writeUpdateUserDoc = await updateUserDoc(userRecord.uid,  profileName);
+      return redirect("/site/profile");
+    }
+
+
   }
-
-
 }
 
 export async function loader({ params, request }: LoaderArgs) {
@@ -43,7 +58,7 @@ export async function loader({ params, request }: LoaderArgs) {
   //   return redirect("/")
   // }
 
-  const sectionData: FormSection = {
+  const sectionData: FormSectionDisplay = {
     name: "Profile Setup",
     text: "First choose your profile name. It must be unique.",
     fields: [{
@@ -67,13 +82,13 @@ export default function ProfileSetup() {
       <div className="mx-auto">
 
         <div className=" max-w-2xl pt-6 pb-5">
-          { actionData ? <p> {JSON.stringify(actionData)} </p>: <p></p>}
+          {actionData ? <p> {JSON.stringify(actionData)} </p> : <p></p>}
           <Form method="post">
             <SectionPanel name={sectionData.name} text={sectionData.text}>
               {
                 sectionData.fields.map((field) => {
-                  const errorObj = actionData ?? { errorData:[]}
-                  const errorText = errorObj.errorData[0] ? errorObj.errorData[0].message : ""        
+                  const errorObj = actionData ?? { errorData: [] }
+                  const errorText = errorObj.errorData[0] ? errorObj.errorData[0].message : ""
                   const defaultValue = "";
 
                   return <StackedField

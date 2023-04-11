@@ -39,6 +39,13 @@ export interface FormSection {
   type?: "imageUpload" | "fields";
 }
 
+export interface FormSectionDisplay {
+  name: string;
+  text: string;
+  type?: "imageUpload" | "fields";
+  fields: Field[];
+};
+
 const formsDb = {
   forms: (profileId: string) =>
     dataPoint<FormDoc>(`${dbBase}/profiles/${profileId}/forms`),

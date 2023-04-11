@@ -29,6 +29,33 @@ export const mainDb = {
   users: () =>dataPoint<UserDoc>(`${dbBase}/users/`),
 };
 
+export const getProfileDoc = async (profileId: string) => {
+  const docRef = mainDb.profiles().doc(profileId);
+  const docSnap = await docRef.get();
+  const docData = docSnap.data();
+  return docData;
+};
+
+export const createProfileDoc = async (profileId: string) => {
+  const docRef = mainDb.profiles().doc(profileId);
+
+  const writeToDb = await docRef.create({
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+  return writeToDb;
+};
+
+export const updateUserDoc = async (userId: string, profileId: string) => {
+  const userDocRef = mainDb.users().doc(userId);
+  const updateData = {
+    defaultProfile: profileId, 
+    profileArray: FieldValue.arrayUnion(profileId)
+  }
+  const updateToDb = await userDocRef.update(updateData);
+  return updateToDb;
+};
+
 
 export const getUserDoc =async (userId:string) => {
   const userDocRef = mainDb.users().doc(userId)

@@ -1,31 +1,32 @@
-import type { ActionArgs, LoaderArgs} from "@remix-run/node";
-import { json, redirect } from "@remix-run/node";
-import { Link, useActionData, useLoaderData, useSubmit } from "@remix-run/react";
-import { useCallback, useState } from "react";
-import { checkSessionCookie, signIn, signInWithToken } from "~/server/auth.server";
-import { getRestConfig } from "~/server/firebase.server";
-import { commitSession, getSession } from "~/server/sessions";
-import * as firebaseRest from "~/server/firebase-rest";
 import { LockClosedIcon } from "@heroicons/react/20/solid";
+import type { ActionArgs, LoaderArgs } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
+import { Form, Link, useActionData } from "@remix-run/react";
 
-export async function action({params, request}:ActionArgs) {
+import { checkSessionCookie, signUp } from "~/server/auth.server";
+import { commitSession, getSession } from "~/server/sessions";
+
+export const loader = async ({ request }: LoaderArgs) => {
+  const session = await getSession(request.headers.get("cookie"));
+  const { uid } = await checkSessionCookie(session);
+  const headers = {
+    "Set-Cookie": await commitSession(session),
+  };
+  if (uid) {
+    return redirect("/", { headers });
+  }
+  return json(null, { headers });
+};
+
+export const action = async ({ request }: ActionArgs) => {
   const form = await request.formData();
-  const idToken = form.get("idToken");
-  let sessionCookie;
+  const email = form.get("email");
+  const password = form.get("password");
+  const formError = json({ error: "Please fill all fields!" }, { status: 400 });
+  if (typeof email !== "string") return formError;
+  if (typeof password !== "string") return formError;
   try {
-    if (typeof idToken === "string") {
-      sessionCookie = await signInWithToken(idToken);
-    } else {
-      const email = form.get("email");
-      const password = form.get("password");
-      const formError = json(
-        { error: "Please fill all fields!" },
-        { status: 400 }
-      );
-      if (typeof email !== "string") return formError;
-      if (typeof password !== "string") return formError;
-      sessionCookie = await signIn(email, password);
-    }
+    const sessionCookie = await signUp( email, password);
     const session = await getSession(request.headers.get("cookie"));
     session.set("session", sessionCookie);
     return redirect("/", {
@@ -37,73 +38,49 @@ export async function action({params, request}:ActionArgs) {
     console.error(error);
     return json({ error: String(error) }, { status: 401 });
   }
-
-}
-
-export async function loader({params, request}:LoaderArgs) {
-  const session = await getSession(request.headers.get("cookie"));
-  const { uid } = await checkSessionCookie(session);
-  const headers = {
-    "Set-Cookie": await commitSession(session),
-  };
-  if (uid) {
-    return redirect("/", { headers });
-  }
-  const { apiKey, domain } = getRestConfig();
-
-  // @ts-ignore
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const pageDetails ={
-    logo: "https://firebasestorage.googleapis.com/v0/b/component-sites.appspot.com/o/furrymarketplace%2FFM%20logo%201.png?alt=media&token=c5e02204-27f3-4996-ac93-738f589826fb"
-  }
-
-
-  return json({ apiKey, domain }, { headers },);
-  
-
-}
-
-type ActionData = {
-  error?: string;
 };
 
-
-export default function LoginPage() {
-  const [clientAction, setClientAction] = useState<ActionData>();
+export default function SignUp() {
   const actionData = useActionData<typeof action>();
-  const restConfig = useLoaderData<typeof loader>();
-  const submit = useSubmit();
-
-  const handleSubmit = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      // To avoid rate limiting, we sign in client side if we can.
-      const login = await firebaseRest.signInWithPassword(
-        {
-          email: event.currentTarget.email.value,
-          password: event.currentTarget.password.value,
-          returnSecureToken: true,
-        },
-        restConfig
-      );
-      if (firebaseRest.isError(login)) {
-        setClientAction({ error: login.error.message });
-        return;
-      }
-      submit({ idToken: login.idToken }, { method: "post" });
-    },
-    [submit, restConfig]
-  );
   return (
-    <form method="post" onSubmit={handleSubmit}>
-
-      <LoginScreen clientAction={clientAction} actionData={actionData} />
-    </form>
+    <Form method="POST">
+    <SignUpScreen actionData={actionData} clientAction={undefined}/>
+    </Form>
+    // <div>
+    //   <h1>Join</h1>
+    //   {actionData?.error ? <p>{actionData.error}</p> : null}
+    //   <Form method="post">
+    //     <input
+    //       style={{ display: "block" }}
+    //       name="name"
+    //       placeholder="Peter"
+    //       type="text"
+    //     />
+    //     <input
+    //       style={{ display: "block" }}
+    //       name="email"
+    //       placeholder="you@example.com"
+    //       type="email"
+    //     />
+    //     <input
+    //       style={{ display: "block" }}
+    //       name="password"
+    //       placeholder="password"
+    //       type="password"
+    //     />
+    //     <button style={{ display: "block" }} type="submit">
+    //       Join
+    //     </button>
+    //   </Form>
+    //   <p>
+    //     Do you want to <Link to="/login">login</Link>?
+    //   </p>
+    // </div>
   );
-} 
+}
 
 
-function LoginScreen(props: { clientAction:any, actionData:any}) {
+function SignUpScreen(props: { clientAction:any, actionData:any}) {
   const {clientAction, actionData} = props;
   return (
     <>
@@ -117,12 +94,12 @@ function LoginScreen(props: { clientAction:any, actionData:any}) {
               alt="Your Company"
             />
             <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-              Sign in to your account
+              Create a NEW Account
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
               Or{' '}
-              <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Create an Account
+              <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Login in to an existing account
               </Link>
             </p>
             {(clientAction?.error || actionData?.error) && (
@@ -197,5 +174,3 @@ function LoginScreen(props: { clientAction:any, actionData:any}) {
     </>
   )
 }
-
-

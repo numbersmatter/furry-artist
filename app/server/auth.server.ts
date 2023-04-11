@@ -58,11 +58,10 @@ export const signInWithToken = async (idToken: string) => {
   return sessionCookie;
 };
 
-export const signUp = async (name: string, email: string, password: string) => {
+export const signUp = async ( email: string, password: string) => {
   await auth.server.createUser({
     email,
     password,
-    displayName: name,
   });
   return await signIn(email, password);
 };

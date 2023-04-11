@@ -2,7 +2,8 @@ import type { ActionArgs, LoaderArgs} from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { CalendarIcon, MapPinIcon, UsersIcon } from '@heroicons/react/20/solid'
-import { getProfileForms } from "~/server/database/profile.server";
+import { baseLoader, redirectOnNoUserOrNoProfile } from "~/server/user.server";
+import { getAllForms } from "~/server/database/forms.server";
 
 export async function action({params, request}:ActionArgs) {
   
@@ -11,14 +12,22 @@ export async function action({params, request}:ActionArgs) {
 }
 
 export async function loader({params, request}:LoaderArgs) {
-  const profileForms = await getProfileForms("milachu92") as any[];
+  const {profileId, userRecord} = await baseLoader(request);
+  if(!userRecord){
+    return redirect('/login');
+  };
+  if(!profileId){
+    return redirect('/profile-setup');
+  }
+
+  const profileForms = await getAllForms({profileId});
 
   const formsList = profileForms.map( doc=>({
     formId:doc.formId,
     name: doc?.name ?? "no name",
     text: doc.text ?? ""
   }))
-  console.log(formsList)
+  
   return json({formsList});
 }
 
@@ -26,7 +35,7 @@ export async function loader({params, request}:LoaderArgs) {
 
 export default function FormsIndex() {
   const { formsList} = useLoaderData<typeof loader>();
-  console.log(formsList)
+  
   return (
     <div className="mx-0 sm:mx-4 sm:my-4">
       <ul className="grid grid-cols-1 gap-4"  >

@@ -17,7 +17,7 @@ export const dataPoint = <T extends FirebaseFirestore.DocumentData>(
 ) => getFirestore().collection(collectionPath).withConverter(converter<T>());
 
 
-interface UserDoc {
+export interface UserDoc {
   defaultProfile: string,
   profileArray: string[],
 }
@@ -52,7 +52,7 @@ export const updateUserDoc = async (userId: string, profileId: string) => {
     defaultProfile: profileId, 
     profileArray: FieldValue.arrayUnion(profileId)
   }
-  const updateToDb = await userDocRef.update(updateData);
+  const updateToDb = await userDocRef.set(updateData, {merge: true});
   return updateToDb;
 };
 

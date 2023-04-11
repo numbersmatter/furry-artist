@@ -6,7 +6,6 @@ export interface FormDoc {
   sectionOrder: string[];
 }
 
-
 export const getProfilePageHeaderDoc = async (profileId: string) => {
   const docRef = mainDb
     .profiles()
@@ -17,20 +16,29 @@ export const getProfilePageHeaderDoc = async (profileId: string) => {
 
   return docData;
 };
-
-export const getDefaultProfile =async (uid: string) => {
-  
-  
-}
-
-
-export const getProfileForms  = async (profileId: string) => {
-  const colRef = mainDb
+export const setProfilePageHeaderDoc = async ({
+  profileId,
+  data,
+}: {
+  profileId: string;
+  data: any;
+}) => {
+  const docRef = mainDb
     .profiles()
-    .doc(`${profileId}`)
-    .collection("forms");
+    .doc(`${profileId}/profile_assets/pageheader`);
 
-  const colSnap = await colRef.get();
-  const formsDocs = colSnap.docs.map((snap )=>({...snap.data(), formId: snap.id}))
-  return formsDocs;
+  return await docRef.set(data, { merge: true });
 };
+
+export const getDefaultProfile = async (uid: string) => {};
+
+// export const getProfileForms  = async (profileId: string) => {
+//   const colRef = mainDb
+//     .profiles()
+//     .doc(`${profileId}`)
+//     .collection("forms");
+
+//   const colSnap = await colRef.get();
+//   const formsDocs = colSnap.docs.map((snap )=>({...snap.data(), formId: snap.id}))
+//   return formsDocs;
+// };

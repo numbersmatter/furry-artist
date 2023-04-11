@@ -48,13 +48,12 @@ export async function loader({ params, request }: LoaderArgs) {
 
 
 
-export default function FormsLayOut() {
+export default function SiteLayout() {
   const { userData } = useLoaderData<typeof loader>();
   return (
     // @ts-ignore
     <SideColumnLayout nav={navigation} navBarUser={userData}>
       <div className="overflow-scroll">
-        <FormsHeader displayName={userData.name} />
         <div className=" mx-auto max-w-7xl bg-[#2a9bb5] sm:px-6 lg:px-8">
         <Outlet />
         </div>

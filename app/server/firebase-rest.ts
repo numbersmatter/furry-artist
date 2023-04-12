@@ -42,6 +42,15 @@ interface SignInWithPasswordResponse extends Response {
   >;
 }
 
+interface RequestPasswordResetResponse extends Response {
+  json(): Promise<
+  | RestError
+  | {
+  email:string;
+}
+>;
+}
+
 export const signInWithPassword = async (
   body: {
     email: string;
@@ -55,6 +64,32 @@ export const signInWithPassword = async (
 ) => {
   const response: SignInWithPasswordResponse = await fetch(
     `${restConfig!.domain}/v1/accounts:signInWithPassword?key=${
+      restConfig!.apiKey
+    }`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  return response.json();
+};
+
+
+export const requestResetPassword = async (
+  body: {
+    email: string;
+    requestType: "PASSWORD_RESET";
+  },
+  restConfig: {
+    apiKey: string;
+    domain: string;
+  }
+) => {
+  const response: RequestPasswordResetResponse = await fetch(
+    `${restConfig!.domain}/v1/accounts:sendOobCode?key=${
       restConfig!.apiKey
     }`,
     {

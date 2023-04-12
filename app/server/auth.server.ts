@@ -5,6 +5,7 @@ import type { UserRecord } from "firebase-admin/auth";
 import { destroySession, getSession } from "~/server/sessions";
 
 import { auth } from "./firebase.server";
+import { sendPasswordResetEmail} from "firebase/auth"
 
 export const checkSessionCookie = async (session: Session) => {
   try {
@@ -50,6 +51,11 @@ export const signIn = async (email: string, password: string) => {
   return signInWithToken(idToken);
 };
 
+export const requestResetPassword = async (email: string) => {
+ return await auth.server.generatePasswordResetLink(email);
+ 
+};
+
 export const signInWithToken = async (idToken: string) => {
   const expiresIn = 1000 * 60 * 60 * 24 * 7; // 1 week
   const sessionCookie = await auth.server.createSessionCookie(idToken, {
@@ -65,3 +71,4 @@ export const signUp = async ( email: string, password: string) => {
   });
   return await signIn(email, password);
 };
+

@@ -5,7 +5,7 @@ import {
   
 } from "firebase-admin/app";
 import {firestore} from "firebase-admin"
-import { getAuth as getServerAuth } from "firebase-admin/auth";
+import { getAuth as getServerAuth,  } from "firebase-admin/auth";
 
 import * as firebaseRest from "./firebase-rest";
 
@@ -57,6 +57,8 @@ if (getServerApps().length === 0) {
   }
   initializeServerApp(config);
 }
+
+
 
 const signInWithPassword = async (email: string, password: string) => {
   const signInResponse = await firebaseRest.signInWithPassword(

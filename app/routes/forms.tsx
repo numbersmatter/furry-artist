@@ -1,22 +1,12 @@
-import { CalendarIcon, ChevronRightIcon, CurrencyDollarIcon, LinkIcon, MapPinIcon, PencilIcon } from "@heroicons/react/20/solid";
-import { BriefcaseIcon, ClipboardDocumentIcon, HomeIcon, InboxIcon, MegaphoneIcon, UserIcon } from "@heroicons/react/24/outline";
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Outlet, useLoaderData } from "@remix-run/react";
 import { getUserIfSignedIn } from "~/server/auth.server";
-import { getUserDoc } from "~/server/database/db.server";
+import { getUserDoc, navigation } from "~/server/database/db.server";
 import { getProfilePageHeaderDoc } from "~/server/database/profile.server";
 import SideColumnLayout from "~/ui/Layout/SideColumnLayout";
 
 
-const navigation = [
-  { name: 'Home', to: '/', icon: HomeIcon },
-  { name: 'Make Forms', to: '/forms', icon: ClipboardDocumentIcon },
-  { name: 'Open Forms', to: '/forms/open-forms', icon: MegaphoneIcon },
-  { name: 'Responses', to: '/opportunities', icon: InboxIcon },
-  { name: 'Workboard', to: '/Workboard', icon: BriefcaseIcon },
-  { name: 'Profile', to: '/site/profile', icon: UserIcon },
-]
 
 
 export async function action({ params, request }: ActionArgs) {
@@ -43,16 +33,17 @@ export async function loader({ params, request }: LoaderArgs) {
     settingsUrl: "/site/profile"
   }
 
-  return json({ userData });
+  const avatarUrl = pageHeaderData?.avatar ?? ""
+
+  return json({ userData, avatarUrl });
 }
 
 
 
 export default function FormsLayOut() {
-  const { userData } = useLoaderData<typeof loader>();
+  const { userData, avatarUrl } = useLoaderData<typeof loader>();
   return (
-    // @ts-ignore
-    <SideColumnLayout nav={navigation} navBarUser={userData}>
+    <SideColumnLayout avatarUrl={avatarUrl}>
       <div className="overflow-scroll">
         <FormsHeader displayName={userData.name} />
         <div className=" mx-auto max-w-7xl bg-[#2a9bb5] sm:px-6 lg:px-8">

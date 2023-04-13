@@ -11,6 +11,7 @@ import { FormSection, FormSectionDisplay } from "~/server/database/forms.server"
 import * as z from "zod"
 import { UserRecord } from "firebase-admin/auth";
 import SectionPanel from "~/ui/Layout/SectionPanel";
+import { setProfilePageHeaderDoc } from "~/server/database/profile.server";
 
 export async function action({ params, request }: ActionArgs) {
   const userRecord = await requireAuth(request);
@@ -44,6 +45,10 @@ export async function action({ params, request }: ActionArgs) {
       return data;
     } else {
       const writeProfileDoc = await createProfileDoc(profileName);
+      const writeProfileAssets=  await setProfilePageHeaderDoc({
+        profileId: profileName,
+        data:{displayName: profileNameRaw,}
+      })
       const writeUpdateUserDoc = await updateUserDoc(userRecord.uid, profileName);
       return redirect("/site/profile");
     }

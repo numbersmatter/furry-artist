@@ -9,15 +9,15 @@ import { getProfilePageHeaderDoc, setProfilePageHeaderDoc } from "~/server/datab
 import { baseLoader } from "~/server/user.server";
 
 export async function action({ params, request }: ActionArgs) {
-  const {profileId, userRecord} = await baseLoader(request);
-  if(!userRecord){
+  const { profileId, userRecord } = await baseLoader(request);
+  if (!userRecord) {
     return redirect('/login');
   };
-  if(!profileId){
+  if (!profileId) {
     return redirect('/profile-setup');
   }
 
-  const intentId = params.intentId ?? "no-intent"
+
   const uploadHandler: UploadHandler = unstable_composeUploadHandlers(
     async ({ name, data }) => {
       if (name !== "img") {
@@ -27,7 +27,7 @@ export async function action({ params, request }: ActionArgs) {
         return undefined
       }
 
-      const uploadedImage = await uploadImage(intentId, data);
+      const uploadedImage = await uploadImage(profileId, data);
       return uploadedImage.secure_url;
     },
     unstable_createMemoryUploadHandler()
@@ -36,7 +36,6 @@ export async function action({ params, request }: ActionArgs) {
   const formData = await unstable_parseMultipartFormData(request, uploadHandler);
 
   const imgSrc = formData.get("img") as string;
-  const imgDesc = formData.get("desc") as string;
   const fieldName = formData.get("fieldName") as string;
   if (!imgSrc) {
     return json({ error: "something wrong" });
@@ -45,19 +44,13 @@ export async function action({ params, request }: ActionArgs) {
 
   await setProfilePageHeaderDoc({
     profileId,
-    data:{
+    data: {
       [fieldName]: imgSrc,
     }
   })
 
-  // await saveImageUpload(
-  //   params.profileId ?? "no-profile",
-  //   params.intentId ?? "no-intent",
-  //   params.sectionId ?? "no-section",
-  //   { url: imgSrc, description: imgDesc, imageId }
-  // )
-  const imageUploadedText = `${imgDesc} uploaded`
-  return json({ imageUploadedText });
+
+  return json({ message: "success" });
 
 
 
@@ -65,24 +58,26 @@ export async function action({ params, request }: ActionArgs) {
 }
 
 export async function loader({ params, request }: LoaderArgs) {
-  const {profileId, userRecord} = await baseLoader(request);
-  if(!userRecord){
+  const { profileId, userRecord } = await baseLoader(request);
+  if (!userRecord) {
     return redirect('/login');
   };
-  if(!profileId){
+  if (!profileId) {
     return redirect('/profile-setup');
   }
   const pageHeaderData = await getProfilePageHeaderDoc(profileId);
+  console.log(profileId)
 
-  return json({pageHeaderData});
+  return json({ pageHeaderData, profileId });
 }
 
 
 
 export default function ProfileData() {
   const [filesPresent, setFilesPresent] = useState<boolean>(false);
+  const [fieldName, setFieldName] = useState<string>("not-set");
 
-  const {pageHeaderData } = useLoaderData<typeof loader>();
+  const { pageHeaderData } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   let transition = useNavigation();
   let submit = useSubmit();
@@ -118,322 +113,135 @@ export default function ProfileData() {
     }
     return setFilesPresent(false)
   };
-  const openFileInput = () => {
+  const openFileInput = (fieldName: string) => {
+    setFieldName(fieldName)
     // @ts-ignore
     fileInputRef.current.click()
   }
+
+  const imageUploadPanelData = [
+    {
+      imageFieldLabel: "avatar",
+      imageSrc: pageHeaderData?.avatar ?? "https://via.placeholder.com/150",
+      panelTitle: "Avatar",
+      panelDescription: "Upload your avatar image",
+    },
+    {
+      imageFieldLabel: "bannerImage",
+      imageSrc: pageHeaderData?.bannerImage ?? "https://via.placeholder.com/150",
+      panelTitle: "Banner Image",
+      panelDescription: "Upload your banner image",
+    },
+    {
+      imageFieldLabel: "heroImage",
+      imageSrc: pageHeaderData?.heroImage ?? "https://via.placeholder.com/150",
+      panelTitle: "Profile Hero Image",
+      panelDescription: "Upload your profile hero image",
+    },
+
+  ]
+
 
 
   return (
     <div className="px-0 py-0 bg-slate-200 sm:py-2 sm:px-4">
       <div className="space-y-10 divide-y bg-slate-200 rounded-lg divide-gray-900/10">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-          <div className="px-4 sm:px-0">
-            <h2 className="text-base font-semibold leading-7 text-gray-900">Profile</h2>
-            <p className="mt-1 text-sm leading-6 text-gray-600">
-              This information will be displayed publicly so be careful what you share.
-            </p>
-          </div>
-          <Form
-            replace
-            method="POST"
-            // @ts-ignore
-            ref={formRef}
-            encType="multipart/form-data"
-            className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl md:col-span-2"
-          >
-            <div className="px-4 py-6 sm:p-8">
-              <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-                <div className="col-span-full">
-                  <label htmlFor="photo" className="block text-sm font-medium leading-6 text-gray-900">
-                    Photo
-                  </label>
-                  <div className="mt-2 flex items-center gap-x-3">
-                    {
-                      pageHeaderData?.avatar ? (
-                        <img
-                          className="h-12 w-12 rounded-full"
-                          src={pageHeaderData?.avatar}
-                          alt=""
-                        />
-                      ) : (
-                        <UserCircleIcon className="h-12 w-12 text-gray-300" aria-hidden="true" />
-                      )
-                    }
-                    <input
-                      ref={fileInputRef}
-                      hidden
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      onChange={(e) => checkFilesPresent(e)}
-                      id="img-field"
-                      type="file"
-                      name="img"
-                      accept="image/*"
-                    />
-                    <input hidden name="fieldName" value="avatar" readOnly />
-                    <button
-                    type="button"
-                      // className={isUploading ? disabledClass : regularClass}
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      >
-                      
-                      {isUploading ? "Uploading..." : "Upload Image"}
-                    </button>
+        {
+          imageUploadPanelData.map((panelData, index) => {
 
-                    <input
-                      className="hidden"
-                      name="_action"
-                      value="uploadImage"
-                      readOnly
-                      />
+            return <ImageUploadPanel
+              key={index}
+              panelData={panelData}
+              openFileInput={openFileInput}
+            />
+          })
+        }
+        <Form
+          // @ts-ignore
+          ref={formRef}
+          method="post"
+          className=""
+          encType="multipart/form-data"
+        >
+          <input
+            type="hidden"
+            name="_action"
+            value="uploadImage"
+          />
+          <input
+            type="hidden"
+            name="fieldName"
+            value={fieldName}
+          />
+          <input
+            type="file"
+            name="img"
+            ref={fileInputRef}
+            onChange={checkFilesPresent}
+            className="hidden"
+          />
 
-                    <button
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      type="button"
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                    >
-                      Change
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Form>
-        </div>
-        <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-          <div className="px-4 sm:px-0">
-            <h2 className="text-base font-semibold leading-7 text-gray-900">Banner Image</h2>
-            <p className="mt-1 text-sm leading-6 text-gray-600">
-              This will be the image used for your profile banner
-            </p>
-          </div>
-          <Form
-            replace
-            method="POST"
-            // @ts-ignore
-            ref={formRef}
-            encType="multipart/form-data"
-            className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl md:col-span-2"
-          >
-            <div className="px-4 py-6 sm:p-8">
-              <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-                <div className="col-span-full">
-                  <label htmlFor="photo" className="block text-sm font-medium leading-6 text-gray-900">
-                    Photo
-                  </label>
-                  <div className="mt-2 flex items-center gap-x-3">
-                    {
-                      pageHeaderData?.bannerImage ? (
-                        <img
-                          className="h-12 w-12"
-                          src={pageHeaderData?.bannerImage}
-                          alt=""
-                        />
-                      ) : (
-                        <Bars3Icon className="h-12 w-12 text-gray-300" aria-hidden="true" />
-                      )
-                    }
-                    <input
-                      ref={fileInputRef}
-                      hidden
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      onChange={(e) => checkFilesPresent(e)}
-                      id="img-field"
-                      type="file"
-                      name="img"
-                      accept="image/*"
-                    />
-                    <input hidden name="fieldName" value="bannerImage" readOnly />
-                    <button
-                    type="button"
-                      // className={isUploading ? disabledClass : regularClass}
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      >
-                      
-                      {isUploading ? "Uploading..." : "Upload Image"}
-                    </button>
-
-                    <input
-                      className="hidden"
-                      name="_action"
-                      value="uploadImage"
-                      readOnly
-                      />
-
-                    <button
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      type="button"
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                    >
-                      Change
-                    </button>
-                  </div>
-                </div>
-
-
-              </div>
-            </div>
-          </Form>
-        </div>
-        <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-          <div className="px-4 sm:px-0">
-            <h2 className="text-base font-semibold leading-7 text-gray-900">Profile Homepage Image</h2>
-            <p className="mt-1 text-sm leading-6 text-gray-600">
-              This will be the image used for your profile homepage.
-            </p>
-          </div>
-          <Form
-            replace
-            method="POST"
-            // @ts-ignore
-            ref={formRef}
-            encType="multipart/form-data"
-            className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl md:col-span-2"
-          >
-            <div className="px-4 py-6 sm:p-8">
-              <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-                <div className="col-span-full">
-                  <label htmlFor="photo" className="block text-sm font-medium leading-6 text-gray-900">
-                    Photo
-                  </label>
-                  <div className="mt-2 flex items-center gap-x-3">
-                    {
-                      pageHeaderData?.heroImage ? (
-                        <img
-                          className="h-12 w-12 "
-                          src={pageHeaderData?.heroImage}
-                          alt=""
-                        />
-                      ) : (
-                        <Bars3Icon className="h-12 w-12 text-gray-300" aria-hidden="true" />
-                      )
-                    }
-                    <input
-                      ref={fileInputRef}
-                      hidden
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      onChange={(e) => checkFilesPresent(e)}
-                      id="img-field"
-                      type="file"
-                      name="img"
-                      accept="image/*"
-                    />
-                    <input hidden name="fieldName" value="heroImage" readOnly />
-                    <button
-                    type="button"
-                      // className={isUploading ? disabledClass : regularClass}
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      >
-                      
-                      {isUploading ? "Uploading..." : "Upload Image"}
-                    </button>
-
-                    <input
-                      className="hidden"
-                      name="_action"
-                      value="uploadImage"
-                      readOnly
-                      />
-
-                    <button
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      type="button"
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                    >
-                      Change
-                    </button>
-                  </div>
-                </div>
-
-
-              </div>
-            </div>
-          </Form>
-        </div>
-        <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-          <div className="px-4 sm:px-0">
-            <h2 className="text-base font-semibold leading-7 text-gray-900">All forms closed</h2>
-            <p className="mt-1 text-sm leading-6 text-gray-600">
-              This will be the image used when all forms are closed.
-            </p>
-          </div>
-          <Form
-            replace
-            method="POST"
-            // @ts-ignore
-            ref={formRef}
-            encType="multipart/form-data"
-            className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl md:col-span-2"
-          >
-            <div className="px-4 py-6 sm:p-8">
-              <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-                <div className="col-span-full">
-                  <label htmlFor="photo" className="block text-sm font-medium leading-6 text-gray-900">
-                    Photo
-                  </label>
-                  <div className="mt-2 flex items-center gap-x-3">
-                    {
-                      pageHeaderData?.closedImage ? (
-                        <img
-                          className="h-12 w-12 "
-                          src={pageHeaderData?.heroImage}
-                          alt=""
-                        />
-                      ) : (
-                        <Bars3Icon className="h-12 w-12 text-gray-300" aria-hidden="true" />
-                      )
-                    }
-                    <input
-                      ref={fileInputRef}
-                      hidden
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      onChange={(e) => checkFilesPresent(e)}
-                      id="img-field"
-                      type="file"
-                      name="img"
-                      accept="image/*"
-                    />
-                    <input hidden name="fieldName" value="closedImage" readOnly />
-                    <button
-                    type="button"
-                      // className={isUploading ? disabledClass : regularClass}
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      >
-                      
-                      {isUploading ? "Uploading..." : "Upload Image"}
-                    </button>
-
-                    <input
-                      className="hidden"
-                      name="_action"
-                      value="uploadImage"
-                      readOnly
-                      />
-
-                    <button
-                      onClick={openFileInput}
-                      disabled={isUploading}
-                      type="button"
-                      className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                    >
-                      Change
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Form>
-        </div>
+        </Form>
       </div>
     </div>
   );
 }
 
+
+
+function ImageUploadPanel(
+  props: {
+    panelData: {
+      imageFieldLabel: string,
+      imageSrc: string,
+      panelTitle: string,
+      panelDescription: string,
+    },
+    openFileInput: (fieldName: string) => void,
+  }
+) {
+
+  const { panelData } = props;
+  return (
+    <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+      <div className="px-4 sm:px-0">
+        <h2 className="text-base font-semibold leading-7 text-gray-900">
+          {panelData.panelTitle}
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-gray-600">
+          {panelData.panelDescription}
+        </p>
+      </div>
+      <div
+        className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl md:col-span-2"
+      >
+        <div className="px-4 py-6 sm:p-8">
+          <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+            <div className="col-span-full">
+              <label htmlFor="photo" className="block text-sm font-medium leading-6 text-gray-900">
+                Photo
+              </label>
+              <div className="mt-2 flex items-center gap-x-3">
+                <img
+                  className="h-12 w-12"
+                  src={panelData.imageSrc}
+                  alt=""
+                />
+
+                <button
+                  onClick={() => props.openFileInput(panelData.imageFieldLabel)}
+                  // disabled={isUploading}
+                  type="button"
+                  className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 

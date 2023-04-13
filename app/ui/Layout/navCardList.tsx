@@ -1,9 +1,9 @@
 import { NavLink } from "@remix-run/react";
-import { SubmittedIntentDoc } from "~/server/db.server";
+import { SubmittedIntentDoc } from "~/server/database/submission.server";
 
 interface IntentListItem extends SubmittedIntentDoc {
   intentId: string,
-  displayCreated:string
+  displayCreated: string
 }
 
 
@@ -42,10 +42,11 @@ export default function NavCardList(
 
                 {/* Extend touch target to entire panel */}
                 <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">{intentDoc.humanReadableId}</p>
-                <p className="truncate text-sm text-gray-500">{intentDoc.displayCreated}</p>
+                <p className="text-sm font-medium text-gray-900">{intentDoc.intentId}</p>
+                <p className="truncate text-sm text-gray-500">{intentDoc.intentId}</p>
               </div>
             </NavLink>
+
           </li>
         ))}
       </ul>

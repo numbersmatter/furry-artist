@@ -1,7 +1,8 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Outlet, useLoaderData } from "@remix-run/react";
+import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
 import { getProfilePageHeaderDoc } from "~/server/database/profile.server";
+import { getReviewStatusByIntentId, getSubmissionStatusByIntentId, getSubmittedIntents } from "~/server/database/submission.server";
 import { baseLoader } from "~/server/user.server";
 import SideColumnLayout from "~/ui/Layout/SideColumnLayout";
 
@@ -21,28 +22,133 @@ export async function loader({ params, request }: LoaderArgs) {
   }
 
   const pageHeaderData = await getProfilePageHeaderDoc(profileId)
+  const intents = await getSubmittedIntents(profileId);
+
+  const submissionStatuses = intents.map((intent) => getReviewStatusByIntentId({ profileId, intentId: intent.intentId }));
+
+  const submissionStatusesResolved = await Promise.all(submissionStatuses);
+
+  const intentsWithStatus = intents.map((intent, index) => {
+    const statusDoc = submissionStatusesResolved.find((status) => status?.submissionId === intent.intentId);
+
+    if(!statusDoc) {
+      return {
+        ...intent,
+        status: "review"
+      }
+    }
+    return {
+      ...intent,
+      status: statusDoc.reviewStatus
+    }
+  })
+
+  const navIntents = [
+    {
+      title: "Needs Review",
+      category: "review",
+      cardList: intentsWithStatus.filter((intent) => intent.status === "review"),
+    },
+    {
+      title: "Hold",
+      category: "hold",
+      cardList: intentsWithStatus.filter((intent) => intent.status === "hold"),
+    },
+    {
+      title: "Accepted",
+      category: "accepted",
+      cardList: intentsWithStatus.filter((intent) => intent.status === "accepted")
+      ,
+    },
+    {
+      title: "Declined",
+      category: "declined",
+      cardList: intentsWithStatus.filter((intent) => intent.status === "declined"),
+    },
+  ]
+
+
 
 
   const avatarUrl = pageHeaderData?.avatar ?? ""
 
-  return json({ avatarUrl });
+  return json({ avatarUrl, navIntents });
 };
 
 
 
 export default function FormSubmissionsLayout() {
-  const { avatarUrl } = useLoaderData<typeof loader>();
+  const { avatarUrl, navIntents } = useLoaderData<typeof loader>();
   return (
     <SideColumnLayout avatarUrl={avatarUrl}>
-       <main className="bg-slate-200 lg:pl-20">
-          <div className="xl:pl-96">
-            <div className="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">{/* Main area */}</div>
-          </div>
-        </main>
+      <main className="bg-slate-200 h-full lg:pl-20">
+        <div className="h-full w-full lg:pl-96">
+            <Outlet />
+        </div>
+      </main>
 
-        <aside className="bg-slate-400 fixed inset-y-0 left-20 hidden w-96 overflow-y-auto border-r border-gray-200 px-4 py-6 sm:px-6 lg:px-8 xl:block">
-          {/* Secondary column (hidden on smaller screens) */}
-        </aside>
+      <aside className="bg-slate-400 fixed h-full inset-y-0 left-20 hidden w-96 overflow-y-auto border-r border-gray-200  lg:block">
+        {/* Secondary column (hidden on smaller screens) */}
+        <nav className="h-full overflow-y-auto bg-white" aria-label="Directory">
+          {
+            navIntents.map((category) =>
+              <NavCardList
+                key={category.category}
+                title={category.title}
+                //@ts-ignore 
+                category={category.category}
+                // @ts-ignore 
+                cardList={category.cardList} />
+            )
+          }
+        </nav>
+
+      </aside>
     </SideColumnLayout>
+  );
+}
+
+export function NavCardList(
+  { title, cardList, category }: {
+    title: string,
+    category: "review" | "hold" | "accepted" | "declined",
+    cardList: any[]
+  }
+) {
+
+  const categoryColor = {
+    review: "bg-orange-300",
+    hold: "bg-yellow-300",
+    accepted: "bg-green-300",
+    declined: "bg-red-300"
+  }
+
+  return (
+    <div key={category} className="relative">
+      <div className={
+        `sticky top-0 z-10 border-t border-b border-gray-200 ${categoryColor[category]} px-6 py-1 text-sm font-medium text-gray-500`
+      }
+      >
+        <h3 className="text-xl" >{title} ( {cardList.length} )</h3>
+      </div>
+      <ul className="relative z-0 divide-y divide-gray-200">
+        {cardList.map((intentDoc) => (
+          <li key={intentDoc.intentId} className="bg-white">
+            <NavLink to={intentDoc.intentId ?? "error"}
+              className={({ isActive }) => isActive ? "relative flex items-center space-x-3 px-6 py-5 bg-slate-400" : "relative flex items-center space-x-3 px-6 py-5 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 hover:bg-gray-50"}
+            >
+
+              <div className="min-w-0 flex-1">
+
+                {/* Extend touch target to entire panel */}
+                <span className="absolute inset-0" aria-hidden="true" />
+                <p className="text-sm font-medium text-gray-900">{intentDoc.intentId}</p>
+                <p className="truncate text-sm text-gray-500">{intentDoc.intentId}</p>
+              </div>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

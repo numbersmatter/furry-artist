@@ -5,6 +5,14 @@ import { getFormById, getFormSectionById } from "./forms.server";
 
 export const dbBase = "database/version2";
 
+export interface SectionData {
+  sectionId: string;
+  fields:Field[];
+  name: string;
+  text: string;
+  type: "imageUpload" | "fields";
+
+}
 export interface OpeningDoc {
   formId: string;
   profileId: string;
@@ -12,12 +20,7 @@ export interface OpeningDoc {
   updatedAt: Timestamp;
   status: "open" | "closed";
   sectionOrder: string[];
-  sections: {
-    sectionId: string;
-    fields:Field[];
-    name: string;
-    text: string;
-  }[];
+  sections:SectionData[];
 }
 export interface OpeningDocWId extends OpeningDoc {
   openId: string;
@@ -26,6 +29,25 @@ export interface OpeningDocWId extends OpeningDoc {
 export const openingsDb = {
   openings: (profileId: string) =>
     dataPoint<OpeningDoc>(`${dbBase}/profiles/${profileId}/openings`),
+};
+
+export const getOpeningById = async ({
+  profileId,
+  openId,
+}: {
+  profileId: string | undefined;
+  openId: string | undefined;
+}) => {
+  if (!profileId || !openId) {
+    return undefined;
+  }
+  const docRef = openingsDb.openings(profileId).doc(openId);
+  const docSnap = await docRef.get();
+  const docData = docSnap.data();
+  if (!docData) {
+    return undefined;
+  }
+  return { ...docData, openId };
 };
 
 export const updateOpenDocStatus = async ({
@@ -95,6 +117,7 @@ export const createNewOpening = async ({
     updatedAt: Timestamp.now(),
     status: "open",
     sectionOrder: formDoc.sectionOrder,
+    // @ts-ignore
     sections,
   };
 

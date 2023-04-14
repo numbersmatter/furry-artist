@@ -116,6 +116,7 @@ export const createNewOpening = async ({
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
     status: "open",
+    formName: formDoc.name,
     sectionOrder: formDoc.sectionOrder,
     // @ts-ignore
     sections,

@@ -2,7 +2,7 @@ import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
 import { getProfilePageHeaderDoc } from "~/server/database/profile.server";
-import { getReviewStatusByIntentId, getSubmissionStatusByIntentId, getSubmittedIntents } from "~/server/database/submission.server";
+import { ArtistIntentReview, getArtistStatuses, getReviewStatusByIntentId, getSubmissionStatusByIntentId, getSubmittedIntents } from "~/server/database/submission.server";
 import { baseLoader } from "~/server/user.server";
 import SideColumnLayout from "~/ui/Layout/SideColumnLayout";
 
@@ -22,12 +22,13 @@ export async function loader({ params, request }: LoaderArgs) {
   }
 
   const pageHeaderData = await getProfilePageHeaderDoc(profileId)
+
+  const statuses =  await getArtistStatuses(profileId);
+
+
   const intents = await getSubmittedIntents(profileId);
-
   const submissionStatuses = intents.map((intent) => getReviewStatusByIntentId({ profileId, intentId: intent.intentId }));
-
   const submissionStatusesResolved = await Promise.all(submissionStatuses);
-
   const intentsWithStatus = intents.map((intent, index) => {
     const statusDoc = submissionStatusesResolved.find((status) => status?.submissionId === intent.intentId);
 
@@ -43,27 +44,29 @@ export async function loader({ params, request }: LoaderArgs) {
     }
   })
 
-  const navIntents = [
+  const validStatuses = [ "hold", "accepted", "declined"];
+
+  const statusDocs = [
     {
       title: "Needs Review",
       category: "review",
-      cardList: intentsWithStatus.filter((intent) => intent.status === "review"),
+      cardList: statuses.filter((statusDoc) => !validStatuses.includes(statusDoc.reviewStatus)),
     },
     {
       title: "Hold",
       category: "hold",
-      cardList: intentsWithStatus.filter((intent) => intent.status === "hold"),
+      cardList: statuses.filter((statusDoc) => statusDoc.reviewStatus === "hold"),
     },
     {
       title: "Accepted",
       category: "accepted",
-      cardList: intentsWithStatus.filter((intent) => intent.status === "accepted")
+      cardList: statuses.filter((statusDoc) => statusDoc.reviewStatus === "accepted")
       ,
     },
     {
       title: "Declined",
-      category: "declined",
-      cardList: intentsWithStatus.filter((intent) => intent.status === "declined"),
+     category: "declined",
+      cardList: statuses.filter((statusDoc) => statusDoc.reviewStatus === "declined"),
     },
   ]
 
@@ -72,13 +75,13 @@ export async function loader({ params, request }: LoaderArgs) {
 
   const avatarUrl = pageHeaderData?.avatar ?? ""
 
-  return json({ avatarUrl, navIntents });
+  return json({ avatarUrl, statusDocs });
 };
 
 
 
 export default function FormSubmissionsLayout() {
-  const { avatarUrl, navIntents } = useLoaderData<typeof loader>();
+  const { avatarUrl, statusDocs } = useLoaderData<typeof loader>();
   return (
     <SideColumnLayout avatarUrl={avatarUrl}>
       <main className="bg-slate-200 h-full lg:pl-20">
@@ -91,14 +94,14 @@ export default function FormSubmissionsLayout() {
         {/* Secondary column (hidden on smaller screens) */}
         <nav className="h-full overflow-y-auto bg-white" aria-label="Directory">
           {
-            navIntents.map((category) =>
+            statusDocs.map((statusDoc) =>
               <NavCardList
-                key={category.category}
-                title={category.title}
+                key={statusDoc.category}
+                title={statusDoc.title}
                 //@ts-ignore 
-                category={category.category}
+                category={statusDoc.category}
                 // @ts-ignore 
-                cardList={category.cardList} />
+                cardList={statusDoc.cardList} />
             )
           }
         </nav>
@@ -108,11 +111,15 @@ export default function FormSubmissionsLayout() {
   );
 }
 
+interface StatusCard extends ArtistIntentReview {
+  statusId: string;
+}
+
 export function NavCardList(
   { title, cardList, category }: {
     title: string,
     category: "review" | "hold" | "accepted" | "declined",
-    cardList: any[]
+    cardList: StatusCard[]
   }
 ) {
 
@@ -132,9 +139,9 @@ export function NavCardList(
         <h3 className="text-xl" >{title} ( {cardList.length} )</h3>
       </div>
       <ul className="relative z-0 divide-y divide-gray-200">
-        {cardList.map((intentDoc) => (
-          <li key={intentDoc.intentId} className="bg-white">
-            <NavLink to={intentDoc.intentId ?? "error"}
+        {cardList.map((statusCard) => (
+          <li key={statusCard.humanReadableId} className="bg-white">
+            <NavLink to={statusCard.statusId ?? "error"}
               className={({ isActive }) => isActive ? "relative flex items-center space-x-3 px-6 py-5 bg-slate-400" : "relative flex items-center space-x-3 px-6 py-5 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 hover:bg-gray-50"}
             >
 
@@ -142,8 +149,8 @@ export function NavCardList(
 
                 {/* Extend touch target to entire panel */}
                 <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">{intentDoc.intentId}</p>
-                <p className="truncate text-sm text-gray-500">{intentDoc.intentId}</p>
+                <p className="text-sm font-medium text-gray-900">{statusCard.humanReadableId}</p>
+                <p className="truncate text-sm text-gray-500">{statusCard.formName}</p>
               </div>
             </NavLink>
           </li>

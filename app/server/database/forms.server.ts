@@ -64,6 +64,39 @@ export const getAllForms = async ({
   return formsDocs;
 }
 
+export const deleteSelectOption = async ({
+  profileId,
+  sectionId,
+  fieldId,
+  optionValue,
+}: {
+  profileId: string | undefined;
+  sectionId: string | undefined;
+  fieldId: string | undefined;
+  optionValue: string | undefined;
+}) => {
+  if (!profileId || !sectionId || !fieldId || !optionValue) {
+    return;
+  }
+  const sectionRef = formsDb.sections(profileId).doc(sectionId);
+  const sectionSnap = await sectionRef.get();
+  const sectionData = sectionSnap.data();
+  if (!sectionData) {
+    return;
+  }
+  const selectField = sectionData.fieldData[fieldId];
+  if (!selectField) {
+    return;
+  }
+  const options = selectField.options || [];
+  const newOptions = options.filter((option) => option.value !== optionValue);
+  const updateData = {
+    [`fieldData.${fieldId}.options`]: newOptions,
+  };
+  // @ts-ignore
+  await sectionRef.update(updateData);
+};
+
 export const deleteField = async ({
   profileId,
   sectionId,

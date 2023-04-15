@@ -23,7 +23,7 @@ export const navigation = [
   { name: 'Home', to: '/', icon: HomeIcon },
   { name: 'Make Forms', to: '/forms', icon: ClipboardDocumentIcon },
   { name: 'Open Forms', to: '/forms/open-forms', icon: MegaphoneIcon },
-  { name: 'Responses', to: '/opportunities', icon: InboxIcon },
+  { name: 'Responses', to: '/submissions', icon: InboxIcon },
   { name: 'Workboard', to: '/Workboard', icon: BriefcaseIcon },
   { name: 'Profile', to: '/site/profile', icon: UserIcon },
 ]

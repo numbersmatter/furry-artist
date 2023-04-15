@@ -3,7 +3,7 @@ import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData } from "@remix-run/react";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import { addOptionToField, deleteField, getFormSectionById } from "~/server/database/forms.server";
+import { addOptionToField, deleteField, deleteSelectOption, getFormSectionById } from "~/server/database/forms.server";
 import SectionPanel from "~/ui/Layout/SectionPanel";
 import * as z from "zod"
 
@@ -34,6 +34,16 @@ export async function action({ params, request }: ActionArgs) {
       fieldId: params.fieldId,
     })
     return redirect(`/forms/sections/${params.sectionId}`)
+  }
+  if (_action === "deleteOption") {
+    await deleteSelectOption({
+      profileId: userDoc?.defaultProfile,
+      sectionId: params.sectionId,
+      fieldId: params.fieldId,
+      // @ts-ignore
+      optionValue: values.value,
+    })
+    return redirect(`/forms/sections/${params.sectionId}/fields/${params.fieldId}`)
   }
 
   if (_action === "add") {
@@ -112,7 +122,7 @@ export default function SectionField() {
             </ul>
             : null
         }
-        <Form replace method="POST" className="col-span-1   py-4 sm:col-span-6  flex justify-end">
+        <Form replace method="post" className="col-span-1   py-4 sm:col-span-6  flex justify-end">
           <button
             name="_action"
             value="delete"
@@ -157,13 +167,21 @@ function AddOption() {
 function OptionItem({ option }: { option: { label: string, value: string } }) {
 
   return <li>
-    <div className="flex justify-between max-w-xs py-3">
+    <Form replace method="post" className="flex justify-between max-w-xs py-3">
       <p>
         {option.label}
       </p>
-      <button>
+      <input 
+        hidden
+        name="value"
+        value={option.value}
+      />
+      <button
+        name="_action"
+        value="deleteOption"
+      >
         Delete
       </button>
-    </div>
+    </Form>
   </li>
 }

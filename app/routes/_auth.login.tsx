@@ -28,7 +28,7 @@ export async function action({params, request}:ActionArgs) {
     }
     const session = await getSession(request.headers.get("cookie"));
     session.set("session", sessionCookie);
-    return redirect("/", {
+    return redirect("/forms", {
       headers: {
         "Set-Cookie": await commitSession(session),
       },
@@ -47,7 +47,7 @@ export async function loader({params, request}:LoaderArgs) {
     "Set-Cookie": await commitSession(session),
   };
   if (uid) {
-    return redirect("/", { headers });
+    return redirect("/forms", { headers });
   }
   const { apiKey, domain } = getRestConfig();
 

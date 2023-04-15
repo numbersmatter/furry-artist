@@ -47,6 +47,10 @@ export async function action({ params, request }: ActionArgs) {
         sectionId: params.sectionId,
         field: fieldData
       })
+      if( modFields && fieldData.type === "select"){
+        return redirect(`fields/${modFields.fieldId}`)
+      }
+
       return { error: false, fields: modFields }
     }
   }

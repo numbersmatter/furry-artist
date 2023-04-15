@@ -195,6 +195,8 @@ export const addField = async ({
   };
   // @ts-ignore
   await sectionRef.update(updateData);
+
+  return { fieldId };
 };
 
 export const updateSectionDoc = async ({

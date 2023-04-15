@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import type { FormSection } from "~/server/database/forms.server";
+import { FormSection, removeSectionFromForm } from "~/server/database/forms.server";
 import { addSectionToForm } from "~/server/database/forms.server";
 import { moveArrayElement, updateFormDocSectionOrder } from "~/server/database/forms.server";
 import { getFormById, getFormSections } from "~/server/database/forms.server";
@@ -40,13 +40,26 @@ export async function action({ params, request }: ActionArgs) {
     sectionId: z.string().min(2, "Section ID must be at least 2 characters"),
   })
 
+  if(_action === "removeSection") {
+    const schemaCheck = AddSchema.safeParse(values);
+    if (!schemaCheck.success) {
+      return { error: true, errorData: schemaCheck.error.issues }
+    }
+    await removeSectionFromForm({
+      profileId: userDoc?.defaultProfile,
+      formId: params.formId,
+      sectionId: schemaCheck.data.sectionId,
+    })
+    return { error: false, errorData: null }
+  }
+
   if (_action === "addSection") {
     const schemaCheck = AddSchema.safeParse(values);
     if (!schemaCheck.success) {
       return { error: true, errorData: schemaCheck.error.issues }
     } else {
       if (schemaCheck.data.sectionId === "create-new") {
-        return redirect(`/forms/sections/create-new`)
+        return redirect(`new-section`)
       }
       await addSectionToForm({
         profileId: userDoc?.defaultProfile,
@@ -204,7 +217,9 @@ function SectionCard(props: {
   sectionId: string
 }) {
   let fetcher = useFetcher();
-  const section = props.section
+  let removeSectionFetcher = useFetcher();
+  const section = props.section;
+  const sectionId = props.sectionId;
 
   if (!section) {
     return (
@@ -250,14 +265,32 @@ function SectionCard(props: {
       <div className="block h-20 px-4  bg-slate-300 items-center">
         {/* <div className="px-4 py-4 sm:px-6"> */}
         <div className="flex h-full items-center justify-between">
-          <p className="truncate text-sm font-medium text-indigo-600">
+        <Link to={`/forms/sections/${sectionId}`}
+         className="truncate text-sm font-medium text-indigo-600">
             {section.name}
-          </p>
+          </Link>
           <div className="w-2/4 flex items-center justify-between">
             <div>
-              <Link to={props.sectionId}>
-                go to section
-              </Link>
+              <removeSectionFetcher.Form
+                method="POST"
+                name="_action"
+               >
+                <input
+                  hidden
+                  name="sectionId"
+                  value={props.sectionId}
+                  readOnly
+                />
+                <button
+                type="submit"
+                name="_action"
+                value="removeSection"
+              >
+                Remove Section
+
+              </button>
+
+              </removeSectionFetcher.Form>
             </div>
             <fetcher.Form method="POST" className="ml-2 grid grid-cols-2 gap-4">
               <input

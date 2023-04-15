@@ -301,6 +301,25 @@ export const getFormById = async ({
   return formData ? { ...formData, formId } : undefined;
 };
 
+export const removeSectionFromForm = async ({
+  profileId,
+  formId,
+  sectionId,
+}: {
+  profileId: string | undefined;
+  formId: string | undefined;
+  sectionId: string | undefined;
+}) => {
+  if (!profileId || !formId || !sectionId) {
+    return;
+  }
+  const formDocRef = formsDb.forms(profileId).doc(formId);
+  const updateData = {
+    sectionOrder: FieldValue.arrayRemove(sectionId),
+  };
+  await formDocRef.update(updateData);
+};
+
 export const addSectionToForm = async ({
   profileId,
   formId,

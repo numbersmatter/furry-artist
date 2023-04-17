@@ -23,7 +23,7 @@ export async function loader({ params, request }: LoaderArgs) {
 
   const pageHeaderData = await getProfilePageHeaderDoc(profileId)
 
-  const statuses =  await getArtistStatuses(profileId);
+  const statuses = await getArtistStatuses(profileId);
 
 
   const intents = await getSubmittedIntents(profileId);
@@ -32,7 +32,7 @@ export async function loader({ params, request }: LoaderArgs) {
   const intentsWithStatus = intents.map((intent, index) => {
     const statusDoc = submissionStatusesResolved.find((status) => status?.submissionId === intent.intentId);
 
-    if(!statusDoc) {
+    if (!statusDoc) {
       return {
         ...intent,
         status: "review"
@@ -44,7 +44,7 @@ export async function loader({ params, request }: LoaderArgs) {
     }
   })
 
-  const validStatuses = [ "hold", "accepted", "declined"];
+  const validStatuses = ["hold", "accepted", "declined"];
 
   const statusDocs = [
     {
@@ -65,7 +65,7 @@ export async function loader({ params, request }: LoaderArgs) {
     },
     {
       title: "Declined",
-     category: "declined",
+      category: "declined",
       cardList: statuses.filter((statusDoc) => statusDoc.reviewStatus === "declined"),
     },
   ]
@@ -83,31 +83,28 @@ export async function loader({ params, request }: LoaderArgs) {
 export default function FormSubmissionsLayout() {
   const { avatarUrl, statusDocs } = useLoaderData<typeof loader>();
   return (
-    <SideColumnLayout avatarUrl={avatarUrl}>
-      <main className="bg-slate-200 h-full lg:pl-20">
-        <div className="h-full w-full lg:pl-96">
-            <Outlet />
+    <>
+      <div className="h-full w-full flex lg:pl-72 ">
+        <div className="bg-slate-400 h-full inset-y-0 left-20 hidden w-96 overflow-y-auto border-r border-gray-200  lg:block">
+          {/* Secondary column (hidden on smaller screens) */}
+          <nav className="h-full overflow-y-auto bg-white" aria-label="Directory">
+            {
+              statusDocs.map((statusDoc) =>
+                <NavCardList
+                  key={statusDoc.category}
+                  title={statusDoc.title}
+                  //@ts-ignore 
+                  category={statusDoc.category}
+                  // @ts-ignore 
+                  cardList={statusDoc.cardList} />
+              )
+            }
+          </nav>
+
         </div>
-      </main>
-
-      <aside className="bg-slate-400 fixed h-full inset-y-0 left-20 hidden w-96 overflow-y-auto border-r border-gray-200  lg:block">
-        {/* Secondary column (hidden on smaller screens) */}
-        <nav className="h-full overflow-y-auto bg-white" aria-label="Directory">
-          {
-            statusDocs.map((statusDoc) =>
-              <NavCardList
-                key={statusDoc.category}
-                title={statusDoc.title}
-                //@ts-ignore 
-                category={statusDoc.category}
-                // @ts-ignore 
-                cardList={statusDoc.cardList} />
-            )
-          }
-        </nav>
-
-      </aside>
-    </SideColumnLayout>
+        <Outlet />
+      </div>
+    </>
   );
 }
 

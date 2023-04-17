@@ -1,7 +1,7 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useRouteLoaderData } from "@remix-run/react";
-import { NavCardList } from "./submissions";
+import { NavCardList } from "./_app.submissions";
 
 export async function action({ params, request }: ActionArgs) {
 
@@ -20,7 +20,7 @@ export async function loader({ params, request }: LoaderArgs) {
 export default function SubmissionIndexPage() {
   const { } = useLoaderData<typeof loader>();
   // @ts-ignore
-  const {  statusDocs } = useRouteLoaderData("routes/submissions");
+  const {  statusDocs } = useRouteLoaderData("routes/_app.submissions");
   return (
     <div className="h-full w-full">
       <div className="bg-slate-400 h-full w-96 overflow-y-auto border-r border-gray-200 lg:hidden  ">

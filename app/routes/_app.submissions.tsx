@@ -26,23 +26,23 @@ export async function loader({ params, request }: LoaderArgs) {
   const statuses = await getArtistStatuses(profileId);
 
 
-  const intents = await getSubmittedIntents(profileId);
-  const submissionStatuses = intents.map((intent) => getReviewStatusByIntentId({ profileId, intentId: intent.intentId }));
-  const submissionStatusesResolved = await Promise.all(submissionStatuses);
-  const intentsWithStatus = intents.map((intent, index) => {
-    const statusDoc = submissionStatusesResolved.find((status) => status?.submissionId === intent.intentId);
+  // const intents = await getSubmittedIntents(profileId);
+  // const submissionStatuses = intents.map((intent) => getReviewStatusByIntentId({ profileId, intentId: intent.intentId }));
+  // const submissionStatusesResolved = await Promise.all(submissionStatuses);
+  // const intentsWithStatus = intents.map((intent, index) => {
+  //   const statusDoc = submissionStatusesResolved.find((status) => status?.submissionId === intent.intentId);
 
-    if (!statusDoc) {
-      return {
-        ...intent,
-        status: "review"
-      }
-    }
-    return {
-      ...intent,
-      status: statusDoc.reviewStatus
-    }
-  })
+  //   if (!statusDoc) {
+  //     return {
+  //       ...intent,
+  //       status: "review"
+  //     }
+  //   }
+  //   return {
+  //     ...intent,
+  //     status: statusDoc.reviewStatus
+  //   }
+  // })
 
   const validStatuses = ["hold", "accepted", "declined"];
 

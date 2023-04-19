@@ -79,6 +79,25 @@ export const submissionDb = {
   
 };
 
+export const archiveSubmission = async ({
+  profileId,
+  submissionId,
+}: {
+  profileId: string | undefined;
+  submissionId: string | undefined;
+}) => {
+  if (!profileId || !submissionId) {
+    return;
+  }
+  const docRef = submissionDb.status(profileId).doc(submissionId);
+
+  const updateData ={
+    archived: true,
+  };
+  await docRef.update(updateData);
+};
+
+
 export const getArtistStatuses = async (profileId: string) => {
   const colRef = submissionDb.status(profileId).where("archived", "==", false);
   const colSnap = await colRef.get();

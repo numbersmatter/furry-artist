@@ -2,7 +2,7 @@ import React from 'react';
 import {useSortable} from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
 
-export function SortableItem(props: {id: number}) {
+export function SortableItem(props: {id: string, children: React.ReactNode}) {
   const {
     attributes,
     listeners,
@@ -24,13 +24,7 @@ export function SortableItem(props: {id: number}) {
     {...attributes} 
     {...listeners}
     >
-      {/* ... */}
-      <div
-      className='bg-slate-200 shadow border-2 border-slate-700 rounded-lg p-4' 
-      >
-
-      <p> Name and ID2: {props.id}</p>
-      </div>
+      {props.children}
 
     </div>
   );

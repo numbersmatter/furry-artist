@@ -1,13 +1,33 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { Form, Link, useActionData, useLoaderData, useNavigation, useSubmit } from "@remix-run/react";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import { addOptionToField, deleteField, deleteSelectOption, getFormSectionById } from "~/server/database/forms.server";
+import { addOptionToField, deleteField, deleteSelectOption, getFormSectionById, moveArrayElement, updateSectionDoc } from "~/server/database/forms.server";
 import SectionPanel from "~/ui/Layout/SectionPanel";
 import * as z from "zod"
-import { useEffect, useRef, } from "react";
-import { ZodIssue } from "zod";
+import { useEffect, useRef, useState, } from "react";
+import type { ZodIssue } from "zod";
+import type {
+  DragEndEvent,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortableItem } from "~/ui/Workboard/SortItem";
 
 export async function action({ params, request }: ActionArgs) {
   const userRecord = await requireAuth(request);
@@ -16,6 +36,8 @@ export async function action({ params, request }: ActionArgs) {
     profileId: userDoc?.defaultProfile,
     sectionId: params.sectionId,
   })
+
+  const fieldId = params.fieldId ?? "no-field-id";
 
   if (!sectionDoc) {
     return { error: true };
@@ -28,6 +50,27 @@ export async function action({ params, request }: ActionArgs) {
   const OptionSchema = z.object({
     label: z.string().min(2, "Label must be at least 2 characters"),
   })
+
+  if (_action === "sort") {
+    const { activeId, overId } = values;
+    const options = sectionDoc.fieldData[fieldId].options ?? [];
+    console.log(options)
+    const startIndex = options.findIndex((option) => option.value === activeId);
+    const endIndex = options.findIndex((option) => option.value === overId);
+    console.log(startIndex, endIndex)
+    const newOrder = moveArrayElement(options, startIndex, endIndex
+      )
+      console.log(newOrder)
+    await updateSectionDoc({
+      profileId: userDoc?.defaultProfile,
+      sectionId: params.sectionId,
+      updateData: {
+        [`fieldData.${params.fieldId}.options`]: newOrder,
+      }
+    })
+    return redirect(`/forms/sections/${params.sectionId}/fields/${params.fieldId}`)
+  }
+
 
   if (_action === "delete") {
     await deleteField({
@@ -96,6 +139,10 @@ export async function loader({ params, request }: LoaderArgs) {
 export default function SectionField() {
   const { currentField, saveUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [startIndex, setStartIndex] = useState<number>(0);
+  const [endIndex, setEndIndex] = useState<number>(0);
+  let submit = useSubmit();
 
   const options = currentField.options ?? []
   const text = currentField.type === "select" ? "Add the select options you would like" : ""
@@ -108,6 +155,7 @@ export default function SectionField() {
     navigation.state === "submitting"
   let formOptionRef = useRef();
   let optionLabelRef = useRef();
+  let optionOrderRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (isAdding) {
@@ -118,6 +166,13 @@ export default function SectionField() {
     }
   }, [isAdding])
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
 
   const labelError = actionData
     // @ts-ignore
@@ -125,21 +180,79 @@ export default function SectionField() {
     ?.find((issue: ZodIssue) => issue.path[0] === "label").message
 
 
+
+  function handleDragStart(event: DragStartEvent) {
+    // @ts-ignore
+    setActiveId(event?.active.id);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over?.id || !active.id) return;
+    const itemId = active.id as string;
+    const overId = over.id as string;
+    console.log(itemId, overId)
+    let formData = new FormData();
+    formData.append("_action", "sort")
+    formData.append("activeId", itemId)
+    formData.set("overId", overId)
+    console.log(formData)
+
+    setActiveId(null);
+    // @ts-ignore
+    if (active.id !== over.id) {
+
+      submit(formData, { method: "POST", })
+
+      // setlItems((items) => {
+      //   const oldIndex = items.indexOf(active.id);
+      //   const newIndex = items.indexOf(over.id);
+
+      //   return arrayMove(items, oldIndex, newIndex);
+      // });
+    }
+  }
+
+
   return (
     <div className="px-0 py-0 sm:py-2 sm:px-4">
+     
       {/* {actionData ? <p>{JSON.stringify(actionData)}</p> : <p></p>} */}
       <SectionPanel name={currentField.label} text={text} >
         {
           currentField.type === "select" ?
-            <ul className=" col-span-1 sm:col-span-6 ">
-              {
-                options.length > 0 ?
-                  options.map((option) =>
-                    <OptionItem key={option.value} option={option} />
-                  )
-                  : <li><p>No options </p>    </li>
-              }
-              <li>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+              onDragStart={handleDragStart}
+            >
+              <SortableContext
+                items={options.map(option => option.value)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="grid col-span-full space-y-2 ">
+
+                  {options.map(option => <SortableItem key={option.value} id={option.value}>
+                    <div className="border-2 py-2 px-3">
+                      <p>
+                        {option.label}
+                      </p>
+                    </div>
+                  </SortableItem>)}
+                </div>
+              </SortableContext>
+              <DragOverlay>
+                {activeId ? (
+                  <div className="border-2 py-2 px-3">
+                    <p>
+                      option
+                    </p>
+                  </div>
+                ) : null}
+
+              </DragOverlay>
+              <div className="grid col-span-full">
                 <Form
                   // @ts-ignore
                   ref={formOptionRef}
@@ -181,9 +294,13 @@ export default function SectionField() {
                       : null
                   }
                 </Form>
-              </li>
-            </ul>
-            : null
+
+              </div>
+
+            </DndContext>
+
+            : <></>
+
         }
         <Form replace method="post" className="col-span-1   py-4 sm:col-span-6  flex justify-end">
           <button
@@ -195,6 +312,7 @@ export default function SectionField() {
             Delete This Field
           </button>
         </Form>
+
       </SectionPanel>
       <div className=" py-4 flex justify-end">
         <Link to={saveUrl}
@@ -248,4 +366,67 @@ function OptionItem({ option }: { option: { label: string, value: string } }) {
       </Form>
     </li>
   )
+}
+
+
+function ListOptionsWithForm() {
+  const options: { label: string, value: string }[] = [];
+  const labelError = "block text-sm font-medium text-gray-700"
+  const isAdding = true
+  return <>
+    <ul className=" col-span-1 sm:col-span-6 ">
+      {
+        options.length > 0 ?
+          options.map((option) =>
+            <OptionItem key={option.value} option={option} />
+          )
+          : <li><p>No options </p>    </li>
+      }
+      <li>
+        <Form
+          // @ts-ignore
+          ref={formOptionRef}
+          replace
+          method="POST"
+        >
+          <div
+            className="flex"
+          >
+
+            <input
+              // @ts-ignore 
+              ref={optionLabelRef}
+              className="inline  mr-4 py-1.5  bg-gray-50 max-w-lg rounded-md px-3 border-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:py-1.5 sm:text-sm sm:leading-6"
+              name="label"
+            />
+            <div className="justify-end">
+              <button
+                type="submit"
+                name="_action"
+                value="add"
+                className="bg-yellow-500 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                {
+                  isAdding ?
+                    "Adding..."
+                    : "Add Option"
+                }
+              </button>
+            </div>
+          </div>
+          {
+            labelError ?
+              <p
+                className="text-red-500"
+              >
+                {labelError}
+              </p>
+              : null
+          }
+        </Form>
+      </li>
+    </ul>
+
+
+  </>
 }

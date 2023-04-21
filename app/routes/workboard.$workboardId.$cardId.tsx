@@ -8,46 +8,46 @@ import { baseLoader } from "~/server/user.server";
 import { Field } from "~/ui/StackedFields/StackFields";
 
 export async function action({ params, request }: ActionArgs) {
-  const { profileId, userRecord } = await baseLoader(request);
-  if (!userRecord) return redirect('/login');
-  if (!profileId) return redirect('/setup-profile');
+  // const { profileId, userRecord } = await baseLoader(request);
+  // if (!userRecord) return redirect('/login');
+  // if (!profileId) return redirect('/setup-profile');
 
-  const reviewStatus = await getReviewStatusByIntentId({ profileId, intentId: params.submissionsId as string });
+  // const reviewStatus = await getReviewStatusByIntentId({ profileId, intentId: params.submissionsId as string });
 
-  const intialFormData = Object.fromEntries(await request.formData());
+  // const intialFormData = Object.fromEntries(await request.formData());
 
 
-  let { _action, ...values } = intialFormData;
+  // let { _action, ...values } = intialFormData;
 
-  if (_action === "archive"){
-    if(reviewStatus?.reviewStatus === "accepted"){
-      const cardDetails ={
-        cardTitle: reviewStatus.humanReadableId,
-        cardType: "submission",
-        workboardId: profileId,
-        archived: false,
-      }
-      await addSubmissionToWorkboard({ 
-        profileId, 
-        cardId: params.submissionsId as string,
-        workboardId: profileId,
-        cardDetails,
-      })
-    }
-    await archiveSubmission({ profileId, submissionId: params.submissionsId as string })
+  // if (_action === "archive"){
+  //   if(reviewStatus?.reviewStatus === "accepted"){
+  //     const cardDetails ={
+  //       cardTitle: reviewStatus.humanReadableId,
+  //       cardType: "submission",
+  //       workboardId: profileId,
+  //       archived: false,
+  //     }
+  //     await addSubmissionToWorkboard({ 
+  //       profileId, 
+  //       cardId: params.submissionsId as string,
+  //       workboardId: profileId,
+  //       cardDetails,
+  //     })
+  //   }
+  //   await archiveSubmission({ profileId, submissionId: params.submissionsId as string })
 
-    return redirect('/submissions');
-  }
+  //   return redirect('/submissions');
+  // }
 
-  const intentId = params.submissionsId as string;
-  const newStatus = _action as "hold" | "accepted" | "declined";
+  // const intentId = params.submissionsId as string;
+  // const newStatus = _action as "hold" | "accepted" | "declined";
 
-  const writeToDb = await changeReviewStatus({
-    profileId, intentId,
-    status: newStatus
-  })
+  // const writeToDb = await changeReviewStatus({
+  //   profileId, intentId,
+  //   status: newStatus
+  // })
 
-  return json({ writeToDb }, { status: 200 })
+  return json( { status: 200 })
 
 }
 
@@ -55,11 +55,11 @@ export async function loader({ params, request }: LoaderArgs) {
   const { profileId, userRecord } = await baseLoader(request);
   if (!userRecord) return redirect('/login');
   if (!profileId) return redirect('/setup-profile');
-  const { submissionsId } = params;
+  const {  cardId } = params;
 
-  const reviewStatus = await getReviewStatusByIntentId({ profileId, intentId: submissionsId });
+  const reviewStatus = await getReviewStatusByIntentId({ profileId, intentId: cardId });
 
-  const submissionDoc = await getSubmissionbyId({ profileId, submissionId: submissionsId });
+  const submissionDoc = await getSubmissionbyId({ profileId, submissionId: cardId });
   if (!submissionDoc) {
     throw new Response("Submission not found", { status: 404 })
   }
@@ -115,12 +115,12 @@ function StatusForm(
         <input readOnly name='intentId' hidden value={submitId} />
         <div className=" py-3 flex gap-4 justify-end">
           <Link
-            to="/submissions"
+            to="/workboard"
             className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             Back
           </Link>
-          <button
+          {/* <button
             name="_action"
             value={"accepted"}
             className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
@@ -148,7 +148,7 @@ function StatusForm(
             className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             { reviewStatus === "accepted" ? "Add to Workboard" : "Archive"}
-          </button>
+          </button> */}
         </div>
       </div>
     </Form>

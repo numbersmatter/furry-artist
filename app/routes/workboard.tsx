@@ -19,9 +19,7 @@ const navigation = [
   { name: 'Dashboard', href: '#', icon: HomeIcon, current: true },
   { name: 'Forms', href: '/forms', icon: ClipboardDocumentIcon, current: false },
   { name: 'Requests', href: '/submissions', icon: InboxIcon, current: false },
-  { name: 'Workboard', href: '#', icon: BriefcaseIcon, current: false },
-  { name: 'Documents', href: '#', icon: DocumentDuplicateIcon, current: false },
-  { name: 'Reports', href: '#', icon: ChartPieIcon, current: false },
+  { name: 'Workboard', href: '/workboard', icon: BriefcaseIcon, current: false },
 ]
 const teams = [
   { id: 1, name: 'Heroicons', href: '#', initial: 'H', current: false },

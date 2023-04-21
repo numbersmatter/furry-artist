@@ -27,7 +27,7 @@ export default function DashboardHomepage() {
     <div className="h-full w-full lg:pl-72 ">
     <header className="bg-gray-50 py-8">
       <h1 className="mt-2 ml-4 text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-        Dashboard
+        Dashboard 2
       </h1>
     </header>
     <div className="px-4 py-3">

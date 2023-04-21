@@ -13,15 +13,15 @@ import {
   InboxIcon,
   BriefcaseIcon
 } from '@heroicons/react/24/outline'
-import { Outlet } from '@remix-run/react'
+import { Link, NavLink, Outlet } from '@remix-run/react'
 
 const navigation = [
   { name: 'Dashboard', href: '#', icon: HomeIcon, current: true },
   { name: 'Forms', href: '/forms', icon: ClipboardDocumentIcon, current: false },
   { name: 'Requests', href: '/submissions', icon: InboxIcon, current: false },
-  { name: 'Workboard', href: '#', icon: BriefcaseIcon, current: false },
-  { name: 'Documents', href: '#', icon: DocumentDuplicateIcon, current: false },
-  { name: 'Reports', href: '#', icon: ChartPieIcon, current: false },
+  { name: 'Workboard', href: '/workboard', icon: BriefcaseIcon, current: false },
+  // { name: 'Documents', href: '#', icon: DocumentDuplicateIcon, current: false },
+  // { name: 'Reports', href: '#', icon: ChartPieIcon, current: false },
 ]
 const teams = [
   { id: 1, name: 'Heroicons', href: '#', initial: 'H', current: false },
@@ -99,13 +99,13 @@ export default function AppBaseLayout() {
                       />
                     </div>
                     <nav className="flex flex-1 flex-col">
-                      <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                      <ul className="flex flex-1 flex-col gap-y-7">
                         <li>
-                          <ul role="list" className="-mx-2 space-y-1">
+                          <ul className="-mx-2 space-y-1">
                             {navigation.map((item) => (
                               <li key={item.name}>
-                                <a
-                                  href={item.href}
+                                <NavLink
+                                  to={item.href}
                                   className={classNames(
                                     item.current
                                       ? 'bg-gray-50 text-indigo-600'
@@ -121,14 +121,14 @@ export default function AppBaseLayout() {
                                     aria-hidden="true"
                                   />
                                   {item.name}
-                                </a>
+                                </NavLink>
                               </li>
                             ))}
                           </ul>
                         </li>
                         <li>
                           <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
-                          <ul role="list" className="-mx-2 mt-2 space-y-1">
+                          <ul  className="-mx-2 mt-2 space-y-1">
                             {teams.map((team) => (
                               <li key={team.name}>
                                 <a
@@ -182,8 +182,8 @@ export default function AppBaseLayout() {
                   <ul  className="-mx-2 space-y-1">
                     {navigation.map((item) => (
                       <li key={item.name}>
-                        <a
-                          href={item.href}
+                        <NavLink
+                          to={item.href}
                           className={classNames(
                             item.current
                               ? 'bg-gray-50 text-indigo-600'
@@ -199,7 +199,7 @@ export default function AppBaseLayout() {
                             aria-hidden="true"
                           />
                           {item.name}
-                        </a>
+                        </NavLink>
                       </li>
                     ))}
                   </ul>
@@ -235,8 +235,8 @@ export default function AppBaseLayout() {
                   </ul>
                 </li>
                 <li className="-mx-6 mt-auto">
-                  <a
-                    href="#"
+                  <Link
+                    to="/site/profile"
                     className="flex items-center gap-x-4 px-6 py-3 text-sm font-semibold leading-6 text-gray-900 hover:bg-gray-50"
                   >
                     <img
@@ -246,7 +246,7 @@ export default function AppBaseLayout() {
                     />
                     <span className="sr-only">Your profile</span>
                     <span aria-hidden="true">Tom Cook</span>
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </nav>
@@ -258,15 +258,15 @@ export default function AppBaseLayout() {
             <span className="sr-only">Open sidebar</span>
             <Bars3Icon className="h-6 w-6" aria-hidden="true" />
           </button>
-          <div className="flex-1 text-sm font-semibold leading-6 text-gray-900">Dashboard</div>
-          <a href="#">
+          <div className="flex-1 text-sm font-semibold leading-6 text-gray-900">Dashboard2</div>
+          <Link to="/site/profile">
             <span className="sr-only">Your profile</span>
             <img
               className="h-8 w-8 rounded-full bg-gray-50"
               src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
               alt=""
             />
-          </a>
+          </Link>
         </div>
         
         <Outlet />

@@ -17,6 +17,8 @@ export interface CardDetails {
   cardType: string;
   workboardId: string;
   archived: boolean;
+  userTitle?: string;
+  userNotes?: string; 
 }
 
 export interface WorkboardDoc {
@@ -34,6 +36,21 @@ const workboardDb = {
     dataPoint<WorkboardDoc>(`${dbBase}/profiles/${profileId}/workboard`),
   cards: (profileId: string) =>
     dataPoint<CardDetails>(`${dbBase}/profiles/${profileId}/cards`),
+};
+
+export const getCardById = async ({
+  profileId,
+  cardId,
+}: {
+  profileId: string | undefined;
+  cardId: string | undefined;
+}) => {
+  if (!profileId || !cardId) return undefined;
+  const cardRef = workboardDb.cards(profileId).doc(cardId);
+  const cardSnap = await cardRef.get();
+  const cardData = cardSnap.data();
+  if (!cardData) return undefined;
+  return { ...cardData, cardId };
 };
 
 export const updateColumnData = async ({

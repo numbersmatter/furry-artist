@@ -1,7 +1,7 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Link, useActionData, useLoaderData, useNavigation, useSubmit } from "@remix-run/react";
-import React, { useCallback, useRef, useState } from 'react';
+import { Link, useActionData, useFetcher, useLoaderData, useNavigation, useRouteLoaderData, useSubmit } from "@remix-run/react";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   CollisionDetection,
   DragEndEvent,
@@ -28,7 +28,8 @@ import {
 } from '@dnd-kit/sortable';
 import { SortableItem } from "~/ui/Workboard/SortItem";
 import { baseLoader } from "~/server/user.server";
-import {  ColumnDetailsWID, getCardsforWorkboard, getWorkboardbyId, moveCard } from "~/server/database/workboard.server";
+import { ColumnDetailsWID, getCardsforWorkboard, getWorkboardbyId, moveCard } from "~/server/database/workboard.server";
+import { Dialog } from "@headlessui/react";
 
 export async function action({ params, request }: ActionArgs) {
   let { profileId, userRecord } = await baseLoader(request);
@@ -43,7 +44,7 @@ export async function action({ params, request }: ActionArgs) {
   // @ts-ignore
   const newData = JSON.parse(values.moveData);
   console.log(newData)
-  
+
   if (_action === "moveCard") {
     const moveData = {
       profileId,
@@ -55,13 +56,21 @@ export async function action({ params, request }: ActionArgs) {
       toIndex: newData.toIndex,
     }
     await moveCard(moveData)
-    
+
     return json({ success: true, moveData });
   }
-  
+
   // @ts-ignore
-  return json({ success: false, data:{ cardId: values.moveData.cardId, fromColumn: values.fromColumn, toColumn: values.toColumn, fromIndex: values.fromIndex, toIndex: values.toIndex
-  }});
+  return json({
+    success: false, data: {
+      // @ts-ignore
+      cardId: values.moveData.cardId,
+      fromColumn: values.fromColumn,
+      toColumn: values.toColumn,
+      fromIndex: values.fromIndex,
+      toIndex: values.toIndex
+    }
+  });
 }
 
 export async function loader({ params, request }: LoaderArgs) {
@@ -97,16 +106,22 @@ export async function loader({ params, request }: LoaderArgs) {
 export default function WorkboardTemplate() {
   const { workboardDoc, boardCards } = useLoaderData<typeof loader>();
   const [isActiveId, setIsActiveId] = useState<string | null>(null);
-  let actionData = useActionData();  
+  const [openCard, setOpenCard] = useState(false);
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  let actionData = useActionData();
   let submit = useSubmit();
   let navigation = useNavigation();
-  const lastOverId = useRef<UniqueIdentifier | null>(null);
-  const recentlyMovedToNewContainer = useRef(false);
+  let submissionCard = "NgLW3Beffy3KaRSzRTJ3";
+
+  const openModal = (cardId: string) => {
+    setOpenCard(true);
+    setOpenCardId(cardId);
+  }
 
 
   let parsedFormData = navigation.formData
-  ? JSON.parse(navigation.formData.get("moveData") as string)
-  : undefined;
+    ? JSON.parse(navigation.formData.get("moveData") as string)
+    : undefined;
 
   const changeCardLocation = ({
     columnData,
@@ -115,16 +130,16 @@ export default function WorkboardTemplate() {
     toColumn,
     fromIndex,
     toIndex,
-  }:{
-    columnData: {[key: string]: ColumnDetailsWID;};
+  }: {
+    columnData: { [key: string]: ColumnDetailsWID; };
     cardId: string;
     fromColumn: string;
     toColumn: string;
     fromIndex: number;
     toIndex: number;
-  })=>{
-  
-    if( fromColumn === toColumn) {
+  }) => {
+
+    if (fromColumn === toColumn) {
       const columnCardOrder = columnData[fromColumn].cardOrder;
       const newColumnCardOrder = [...columnCardOrder];
       newColumnCardOrder.splice(fromIndex, 1);
@@ -136,16 +151,16 @@ export default function WorkboardTemplate() {
           cardOrder: newColumnCardOrder,
         }
       }
-  
+
       return newColumnData;
     }
-  
+
     const newFromColumnCardOrder = [...columnData[fromColumn].cardOrder];
     newFromColumnCardOrder.splice(fromIndex, 1);
-  
+
     const newToColumnCardOrder = [...columnData[toColumn].cardOrder];
     newToColumnCardOrder.splice(toIndex, 0, cardId);
-  
+
     const newColumnData = {
       ...columnData,
       [fromColumn]: {
@@ -159,10 +174,10 @@ export default function WorkboardTemplate() {
     }
     return newColumnData;
   }
-  
 
-  const getColumnData = () =>{
-    if(parsedFormData){
+
+  const getColumnData = () => {
+    if (parsedFormData) {
       return changeCardLocation({
         columnData: workboardDoc.columnData,
         cardId: parsedFormData.cardId,
@@ -176,15 +191,8 @@ export default function WorkboardTemplate() {
   }
   const columnData = getColumnData()
 
-  /**
-   * Custom collision detection strategy optimized for multiple containers
-   *
-   * - First, find any droppable containers intersecting with the pointer.
-   * - If there are none, find intersecting containers with the active draggable.
-   * - If there are no intersecting containers, return the last matched intersection
-   *
-   */
-  
+
+
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -195,91 +203,145 @@ export default function WorkboardTemplate() {
 
 
   return (
-
-    <div className="flex flex-1 flex-col  px-2 py-2">
-      <div>
-        <h1
-          className="text-3xl font-bold text-gray-900 "
-        >
-          Workboard
-        </h1>
-        <Link to="add-column">
-          add column
-        </Link>
-        <div>
-          {
-            actionData ?
-            <p>
-              {JSON.stringify(actionData)}
-            </p>
-            : null
-          }
-        </div>
-      </div>
-
-
-      <DndContext
-        id="workboard"
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragEnd={handleDragEnd}
-        onDragStart={handleDragStart}
+    <>
+      <Dialog
+        open={openCard}
+        onClose={() => setOpenCard(false)}
+        as="div"
+        className="relative z-50 "
+      // className="max-w-2xl  pt-10 inset-0 z-10 overflow-y-auto"
       >
-        <div className="flex-1 pt-1 flex flex-row space-x-4 overflow-x-scroll">
-          {workboardDoc.columnOrder.map((colId) => {
-            const workColumn = columnData[colId];
+        <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+        <div className="fixed inset-0 overflow-y-scroll">
 
-            return (
-              <WorkColumn key={colId} id={colId} colName={workColumn.columnTitle}>
-                <SortableContext
-                  items={[...workColumn.cardOrder, `new-card-${colId}`]}
-                  strategy={verticalListSortingStrategy}
-                  id={colId}
-                >
-                  <Droppable isActiveId={isActiveId} id={colId}>
-                    <div
-                      className="flex flex-1 flex-col h-full space-y-2"
-                    >
 
-                      {workColumn.cardOrder.map((id: string) => {
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <Dialog.Panel
+              className="w-full max-w-5xl rounded bg-white shadow-lg"
+            >
+              <div className="">
 
-                        const workCard = boardCards.find(card => card.cardId === id)
-                          ?? { cardId: id, cardTitle: "no title", };
-
-                        return (
-                          <SortableItem
-                          displayHandle 
-                          key={id} id={id}>
-                            <WorkCard workCard={workCard} />
-                          </SortableItem>
-                        )
-                      })}
-                      <SortableItem 
-                      displayHandle={false}
-                      id={`new-card-${colId}`}>
-                        <PlaceholderCard holdCard={{cardId: `new-card-${colId}`, cardTitle:"placeholder"} } />
-                      </SortableItem>
-                    </div>
-                  </Droppable>
-                </SortableContext>
-              </WorkColumn>
-            )
-          }
-          )}
-          <DragOverlay>
-            {isActiveId ? (
-              <div
-                className="absolute border-2 border-slate-400  z-10 w-64 h-32 bg-white rounded-lg shadow-lg"
-              >
-
-              <WorkCard workCard={{ cardId: isActiveId, cardTitle: "no title", }} />
               </div>
-            )
-              : null}
-          </DragOverlay>
+              <Dialog.Title className="px-4 pt-4 text-3xl font-medium text-gray-900"
+              >
+                {/* { cardFetcher.data ?
+                  "cardFetcher.data.submissionDoc.humanReadableId"
+                  : "Loading"
+                } */}
+              </Dialog.Title>
+              <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h2
+                  className="text-2xl font-semibold leading-6 text-gray-900 capitalize"
+                >
+                  H2 title text
+                </h2>
+                <h3 className="mt-1 max-w-2xl text-xl text-gray-500">
+                  Request Details
+                </h3>
+                <p>
+                  working on it
+                </p>
+              </div>
+              <div className="divide-y-2 divide-slate-600">
+
+              </div>
+            </Dialog.Panel>
+          </div>
         </div>
-      </DndContext>
-    </div>
+
+      </Dialog>
+
+
+      <div className="flex flex-1 flex-col  px-2 py-2">
+        <div>
+          <h1
+            className="text-3xl font-bold text-gray-900 "
+          >
+            Workboard
+          </h1>
+          <Link to="add-column">
+            add column
+          </Link>
+          <div>
+            {
+              actionData ?
+                <p>
+                  {JSON.stringify(actionData)}
+                </p>
+                : null
+            }
+          </div>
+        </div>
+        <DndContext
+          id="workboard"
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragEnd={handleDragEnd}
+          onDragStart={handleDragStart}
+        >
+          <div className="flex-1 pt-1 flex flex-row space-x-4 overflow-x-scroll">
+            {workboardDoc.columnOrder.map((colId) => {
+              const workColumn = columnData[colId];
+
+              return (
+                <WorkColumn key={colId} id={colId} colName={workColumn.columnTitle}>
+                  <SortableContext
+                    items={[...workColumn.cardOrder, `new-card-${colId}`]}
+                    strategy={verticalListSortingStrategy}
+                    id={colId}
+                  >
+                    <Droppable isActiveId={isActiveId} id={colId}>
+                      <div
+                        className="flex flex-1 flex-col h-full space-y-2"
+                      >
+
+                        {workColumn.cardOrder.map((id: string) => {
+
+                          const workCard = boardCards.find(card => card.cardId === id)
+                            ?? { cardId: id, cardTitle: "no title", };
+
+                          return (
+                            <SortableItem
+                              displayHandle
+                              key={id} id={id}>
+                              <WorkCard
+                                cardId={id}
+                                openCard={() => openModal(id)}
+                              />
+                            </SortableItem>
+                          )
+                        })}
+                        <SortableItem
+                          displayHandle={false}
+                          id={`new-card-${colId}`}>
+                          <PlaceholderCard holdCard={{ cardId: `new-card-${colId}`, cardTitle: "placeholder" }} />
+                        </SortableItem>
+                      </div>
+                    </Droppable>
+                  </SortableContext>
+                </WorkColumn>
+              )
+            }
+            )}
+            <DragOverlay>
+              {isActiveId ? (
+                <div
+                  className="absolute border-2 border-slate-400  z-10 w-64 h-32 bg-white rounded-lg shadow-lg"
+                >
+
+                  <WorkCard
+                    cardId={isActiveId}
+                    openCard={() => setOpenCard(false)}
+                  />
+                </div>
+              )
+                : null}
+            </DragOverlay>
+          </div>
+        </DndContext>
+      </div>
+    </>
+
   );
   function handleDragStart(event: DragStartEvent) {
     setIsActiveId(event.active.id as string);
@@ -318,7 +380,7 @@ export default function WorkboardTemplate() {
       formData.append("moveData", JSON.stringify(moveData));
       formData.append("_action", "moveCard")
       console.log(moveData)
-      submit(formData, { method: "POST"})
+      submit(formData, { method: "POST" })
       return;
     }
 
@@ -338,7 +400,7 @@ export default function WorkboardTemplate() {
     let formData = new FormData();
     formData.append("moveData", JSON.stringify(moveData));
     formData.append("_action", "moveCard")
-    submit(formData, { method: "POST"})
+    submit(formData, { method: "POST" })
     console.log(moveData)
 
     return;
@@ -349,20 +411,42 @@ export default function WorkboardTemplate() {
   }
 }
 
-function WorkCard(props: { workCard: { cardId: string, cardTitle: string, } }) {
-  const { cardId, cardTitle, } = props.workCard
+function WorkCard(props: { cardId: string, openCard: () => void }) {
+  const { cardId, openCard } = props;
+
+  const fetcher = useFetcher();
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data == null) {
+      fetcher.load(`/api/card/${cardId}`);
+    }
+  }, [fetcher, cardId])
+
+  if (fetcher.state === "loading") {
+    return <div>loading</div>
+  }
+
+  const userTitle = fetcher.data?.cardDoc?.userTitle;
+
+  const cardTitle = userTitle ?
+    userTitle :
+    fetcher.data?.cardDoc?.cardTitle;
+
+
+
+
+
 
   return (
     <div
       className="h-28 w-56 px-2 py-2  rounded-lg"
     >
       <h4 className=" text-lg text-center">{cardTitle}</h4>
-      <h4>{cardId}</h4>
-      <Link
-        to={cardId}
+      <p className="text-sm text-slate-300 ">{cardId}</p>
+      <button
+        onClick={openCard}
       >
         Open
-      </Link>
+      </button>
     </div>
   )
 }
@@ -397,16 +481,16 @@ function WorkColumn(props: { id: string, colName: string, children: React.ReactN
 
 
 
-function Droppable(props: { id: string, isActiveId:string| null,  children: React.ReactNode }) {
+function Droppable(props: { id: string, isActiveId: string | null, children: React.ReactNode }) {
   const { isOver, setNodeRef } = useDroppable({
     id: props.id,
   });
 
   const styling = isOver
-  ? "bg-green-300"
-  : props.isActiveId
-  ?  "bg-slate-300"
-  : "bg-slate-200"
+    ? "bg-green-300"
+    : props.isActiveId
+      ? "bg-slate-300"
+      : "bg-slate-200"
 
   return (
     <div className={`${styling} h-full w-full flex`} ref={setNodeRef}>

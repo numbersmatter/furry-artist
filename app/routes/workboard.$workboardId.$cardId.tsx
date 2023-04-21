@@ -1,3 +1,4 @@
+import { Dialog } from "@headlessui/react";
 import { ActionArgs, LoaderArgs, Response } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useLoaderData } from "@remix-run/react";
@@ -71,13 +72,20 @@ export async function loader({ params, request }: LoaderArgs) {
 
 export default function SubmissionDetailsPage() {
   const { submissionDoc, reviewStatus } = useLoaderData<typeof loader>();
+
   return (
+    <Dialog
+      open={true}
+      onClose={() => { }}
+      className="max-w-2xl fixed pt-10 inset-0 z-10 overflow-y-auto" 
+    >
+
     <article className="px-2 py-2">
       <div className=" rounded-xl  border-4 px-4 py-3 max-w-3xl">
         <div>
           <h2 
             className="text-2xl font-semibold leading-6 text-gray-900 capitalize"
-          >
+            >
             {submissionDoc.humanReadableId}
           </h2>
           <h3 className="mt-1 max-w-2xl text-xl text-gray-500">
@@ -96,10 +104,11 @@ export default function SubmissionDetailsPage() {
           <StatusForm 
             submitId={submissionDoc.submissionId} 
             reviewStatus={reviewStatus?.reviewStatus} 
-          />
+            />
         </div>
       </div>
     </article>
+            </Dialog>
   );
 }
 
@@ -120,35 +129,6 @@ function StatusForm(
           >
             Back
           </Link>
-          {/* <button
-            name="_action"
-            value={"accepted"}
-            className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Accept
-          </button>
-          <button
-            name="_action"
-            value={"hold"}
-            className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-
-          >
-            Hold
-          </button>
-          <button
-            name="_action"
-            value={"declined"}
-            className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Decline
-          </button>
-          <button
-            name="_action"
-            value={"archive"}
-            className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            { reviewStatus === "accepted" ? "Add to Workboard" : "Archive"}
-          </button> */}
         </div>
       </div>
     </Form>

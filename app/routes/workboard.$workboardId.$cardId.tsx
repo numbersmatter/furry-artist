@@ -1,44 +1,47 @@
 import { Dialog } from "@headlessui/react";
 import { ActionArgs, LoaderArgs, Response } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, Link, useLoaderData } from "@remix-run/react";
+import { Form, Link, useLoaderData, useNavigate } from "@remix-run/react";
+import { z } from "zod";
 import { getOpeningById, SectionData } from "~/server/database/openings.server";
 import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
-import { addSubmissionToWorkboard } from "~/server/database/workboard.server";
+import { addSubmissionToWorkboard, getCardById, updateCard } from "~/server/database/workboard.server";
 import { baseLoader } from "~/server/user.server";
 import { Field } from "~/ui/StackedFields/StackFields";
+import TextAreaField from "~/ui/StackedFields/TextArea";
+import TextField from "~/ui/StackedFields/TextField";
 
 export async function action({ params, request }: ActionArgs) {
-  // const { profileId, userRecord } = await baseLoader(request);
-  // if (!userRecord) return redirect('/login');
-  // if (!profileId) return redirect('/setup-profile');
+  const { profileId, userRecord } = await baseLoader(request);
+  if (!userRecord) return redirect('/login');
+  if (!profileId) return redirect('/setup-profile');
 
-  // const reviewStatus = await getReviewStatusByIntentId({ profileId, intentId: params.submissionsId as string });
-
-  // const intialFormData = Object.fromEntries(await request.formData());
+  const intialFormData = Object.fromEntries(await request.formData());
 
 
-  // let { _action, ...values } = intialFormData;
+  let { _action, ...values } = intialFormData;
 
-  // if (_action === "archive"){
-  //   if(reviewStatus?.reviewStatus === "accepted"){
-  //     const cardDetails ={
-  //       cardTitle: reviewStatus.humanReadableId,
-  //       cardType: "submission",
-  //       workboardId: profileId,
-  //       archived: false,
-  //     }
-  //     await addSubmissionToWorkboard({ 
-  //       profileId, 
-  //       cardId: params.submissionsId as string,
-  //       workboardId: profileId,
-  //       cardDetails,
-  //     })
-  //   }
-  //   await archiveSubmission({ profileId, submissionId: params.submissionsId as string })
+  const NotesSchema = z.object({
+    userNotes: z.string().optional(),
+    userTitle: z.string().optional()
+  });
 
-  //   return redirect('/submissions');
-  // }
+  if (_action === "saveUserNote"){
+    const checkInput = NotesSchema.safeParse(values);
+    if(!checkInput.success){
+      return json({ error: "Failed Parse", issues: checkInput.error.issues });
+
+    }
+    await updateCard({
+      profileId,
+      cardId: params.cardId as string,
+      cardDetails:{
+      userNotes: checkInput.data.userNotes,
+      userTitle: checkInput.data.userTitle
+    }
+    })
+    return json({ status: 200 })
+  }
 
   // const intentId = params.submissionsId as string;
   // const newStatus = _action as "hold" | "accepted" | "declined";
@@ -48,7 +51,7 @@ export async function action({ params, request }: ActionArgs) {
   //   status: newStatus
   // })
 
-  return json( { status: 200 })
+  return json({ status: 200 })
 
 }
 
@@ -56,59 +59,126 @@ export async function loader({ params, request }: LoaderArgs) {
   const { profileId, userRecord } = await baseLoader(request);
   if (!userRecord) return redirect('/login');
   if (!profileId) return redirect('/setup-profile');
-  const {  cardId } = params;
+  const { cardId } = params;
 
   const reviewStatus = await getReviewStatusByIntentId({ profileId, intentId: cardId });
 
   const submissionDoc = await getSubmissionbyId({ profileId, submissionId: cardId });
-  if (!submissionDoc) {
-    throw new Response("Submission not found", { status: 404 })
-  }
 
-  return json({ submissionDoc, reviewStatus });
+  const cardDetails = await getCardById({ profileId, cardId });
+
+
+  return json({ submissionDoc, reviewStatus, cardDetails });
 }
 
 
 
-export default function SubmissionDetailsPage() {
-  const { submissionDoc, reviewStatus } = useLoaderData<typeof loader>();
+export default function CardDetailsPage() {
+  const { submissionDoc, reviewStatus, cardDetails } = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
 
   return (
     <Dialog
       open={true}
-      onClose={() => { }}
-      className="max-w-2xl fixed pt-10 inset-0 z-10 overflow-y-auto" 
+      as="div"
+      onClose={() => { navigate("/workboard/") }}
+      className="relative z-50 "
+    // className="max-w-2xl  pt-10 inset-0 z-10 overflow-y-auto"
     >
-
-    <article className="px-2 py-2">
-      <div className=" rounded-xl  border-4 px-4 py-3 max-w-3xl">
-        <div>
-          <h2 
-            className="text-2xl font-semibold leading-6 text-gray-900 capitalize"
+      <div className="fixed inset-0 bg-black opacity-30" />
+      <div className="fixed inset-0 overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4">
+          <Dialog.Panel
+            className="w-full max-w-5xl rounded bg-white shadow-lg"
+          >
+            <Dialog.Title className="px-4 pt-4 text-3xl font-medium text-gray-900"
             >
-            {submissionDoc.humanReadableId}
-          </h2>
-          <h3 className="mt-1 max-w-2xl text-xl text-gray-500">
-            Request Details
-          </h3>
-          <p>
-            {reviewStatus?.reviewStatus}
-          </p>
-        </div>
-        <div className="divide-y-2 divide-slate-600">
-          {
-            submissionDoc.submittedSections.map((section: SubmittedSection, index) => {
-              return <SectionDisplay key={index} submittedSection={section} />
-            })
-          }
-          <StatusForm 
-            submitId={submissionDoc.submissionId} 
-            reviewStatus={reviewStatus?.reviewStatus} 
-            />
+              {cardDetails?.userTitle ?? cardDetails?.cardTitle}
+            </Dialog.Title>
+            <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+             
+              <h3 className="mt-1 max-w-2xl text-xl text-gray-500">
+                Request Details
+              </h3>
+              <p>
+              </p>
+            </div>
+            <Form
+              method="POST"
+              replace
+              className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4 rounded-md border-2 border-gray-200"
+            >
+              <TextField 
+                fieldId="userTitle"
+                label="Title"
+                defaultValue={cardDetails?.userTitle ?? ""}
+              />
+              <TextAreaField
+                fieldId="userNotes"
+                label="notes"
+                defaultValue={cardDetails?.userNotes ?? ""}
+              />
+              <div
+                className="flex justify-end space-x-3"
+
+              >
+
+              <button
+                type="submit"
+                name="_action"
+                value="saveUserNote"
+                >
+                save
+              </button>
+              <Link
+                to="/workboard"
+                className="border-2 py-1 px-2 text-gray-500"
+              >
+                close
+              </Link>
+                </div>
+
+            </Form>
+            {
+              submissionDoc
+                ?
+                <article className="px-2 py-2">
+                  <div className=" rounded-xl  border-4 px-4 py-3 ">
+                    <div>
+                      <h2
+                        className="text-2xl font-semibold leading-6 text-gray-900 capitalize"
+                      >
+                        {submissionDoc.humanReadableId}
+                      </h2>
+                      <h3 className="mt-1 max-w-2xl text-xl text-gray-500">
+                        Request Details
+                      </h3>
+                      <p>
+                        {reviewStatus?.reviewStatus}
+                      </p>
+                    </div>
+                    <div className="divide-y-2 divide-slate-600">
+                      {
+                        submissionDoc.submittedSections.map((section: SubmittedSection, index) => {
+                          return <SectionDisplay key={index} submittedSection={section} />
+                        })
+                      }
+                     
+                    </div>
+                  </div>
+                </article>
+                : null
+            }
+            <div className="divide-y-2 divide-slate-600">
+
+            </div>
+          </Dialog.Panel>
         </div>
       </div>
-    </article>
-            </Dialog>
+
+    </Dialog>
+
+
   );
 }
 
@@ -156,16 +226,16 @@ function SectionDisplay({ submittedSection }: { submittedSection: SubmittedSecti
         className=" pt-2 grid grid-cols-2 gap-x-4 gap-y-8  "
       >
         {
-          
-           submittedSection.imageArray.map((imageData
-            ) => (
-              <li key={imageData.url} className="relative">
-                <a href={imageData.url} target="_blank" rel="noreferrer" className="group aspect-w-10 aspect-h-7 block w-full overflow-hidden rounded-lg bg-gray-100 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-100">
-                  <img src={imageData.url} alt="" className="pointer-events-none object-cover group-hover:opacity-75" />
-                </a>
-                <p className="pointer-events-none mt-2 block truncate text-sm font-medium text-gray-900">{imageData.description}</p>
-              </li>
-            ))
+
+          submittedSection.imageArray.map((imageData
+          ) => (
+            <li key={imageData.url} className="relative">
+              <a href={imageData.url} target="_blank" rel="noreferrer" className="group aspect-w-10 aspect-h-7 block w-full overflow-hidden rounded-lg bg-gray-100 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-100">
+                <img src={imageData.url} alt="" className="pointer-events-none object-cover group-hover:opacity-75" />
+              </a>
+              <p className="pointer-events-none mt-2 block truncate text-sm font-medium text-gray-900">{imageData.description}</p>
+            </li>
+          ))
         }
       </ul>
 

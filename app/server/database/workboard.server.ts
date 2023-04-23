@@ -52,6 +52,18 @@ export const getCardById = async ({
   if (!cardData) return undefined;
   return { ...cardData, cardId };
 };
+export const updateCard = async ({
+  profileId,
+  cardId,
+  cardDetails,
+}: {
+  profileId: string;
+  cardId: string;
+  cardDetails: Partial<CardDetails>;
+}) => {
+  const cardRef = workboardDb.cards(profileId).doc(cardId);
+  await cardRef.update(cardDetails);
+};
 
 export const updateColumnData = async ({
   profileId,

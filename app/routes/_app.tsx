@@ -2,12 +2,7 @@ import { Fragment, useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import {
   Bars3Icon,
-  CalendarIcon,
-  ChartPieIcon,
-  DocumentDuplicateIcon,
-  FolderIcon,
   HomeIcon,
-  UsersIcon,
   XMarkIcon,
   ClipboardDocumentIcon,
   InboxIcon,
@@ -16,9 +11,6 @@ import {
 import { Link, NavLink, Outlet } from '@remix-run/react'
 import { ArrowLeftOnRectangleIcon } from '@heroicons/react/20/solid'
 import { Form } from '@remix-run/react'
-import { ActionArgs, json, redirect } from '@remix-run/node'
-import { baseLoader } from '~/server/user.server'
-import { destroySession, getSession } from '~/server/sessions'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: true },
@@ -39,27 +31,6 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(' ')
 }
 
-export async function action({ params, request }: ActionArgs) {
-  let { profileId, userRecord } = await baseLoader(request);
-  if (!userRecord) {
-    return redirect('/login');
-  };
-  if (!profileId) {
-    return redirect('/profile-setup');
-  }
-
-  let { _action, ...values } = Object.fromEntries(await request.formData());
-
-
-  if(_action === 'logout') {
-    const session = await getSession(request.headers.get("Cookie"));
-  return redirect("/login", {
-    headers: { "Set-Cookie": await destroySession(session) },
-  });
-}
-
-  return json({});
-}
 
 
 
@@ -300,7 +271,7 @@ export default function AppBaseLayout() {
                   <div
                     className='flex items-center decoration-2 gap-x-1 py-3 text-lg underline underline-offset-4 font-semibold leading-6 text-gray-900 hover:bg-gray-50'
                   >
-                  <ArrowLeftOnRectangleIcon className="flex-shrink-0 h-6 w-6 text-gray-400" aria-hidden="true" />
+                  <ArrowLeftOnRectangleIcon className="flex-shrink-0 h-6 w-6 text-gray-600" aria-hidden="true" />
                     Logout
                   </div>
           </Link>

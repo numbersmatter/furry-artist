@@ -21,6 +21,10 @@ export interface CardDetails {
   userNotes?: string; 
 }
 
+export interface CardDetailsWID extends CardDetails {
+  cardId: string;
+}
+
 export interface WorkboardDoc {
   createdAt: Timestamp;
   profileId: string;

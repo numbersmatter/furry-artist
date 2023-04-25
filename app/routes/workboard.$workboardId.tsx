@@ -28,8 +28,11 @@ import {
 } from '@dnd-kit/sortable';
 import { SortableItem } from "~/ui/Workboard/SortItem";
 import { baseLoader } from "~/server/user.server";
-import { ColumnDetailsWID, getCardsforWorkboard, getWorkboardbyId, moveCard } from "~/server/database/workboard.server";
+import { CardDetailsWID, ColumnDetailsWID, getCardsforWorkboard, getWorkboardbyId, moveCard } from "~/server/database/workboard.server";
 import { Dialog } from "@headlessui/react";
+import { initializeApp } from "firebase/app";
+import { z } from "zod";
+import { getFirestore } from "firebase-admin/firestore";
 
 export async function action({ params, request }: ActionArgs) {
   let { profileId, userRecord } = await baseLoader(request);
@@ -98,29 +101,54 @@ export async function loader({ params, request }: LoaderArgs) {
     workboardId: params.workboardId as string,
   });
 
+  const clientFirebaseConfig = {
+    apiKey: "AIzaSyDxlpL1dwd5Nh3x2QG_1M3YCelQJqsDzA8",
+    authDomain: "furry-artist.firebaseapp.com",
+    projectId: "furry-artist",
+    storageBucket: "furry-artist.appspot.com",
+    messagingSenderId: "1001670878711",
+    appId: "1:1001670878711:web:6adb5ff46dd36e4210faf2"
+  };
 
-  return json({ workboardDoc, boardCards });
+
+  return json({ workboardDoc, boardCards, clientFirebaseConfig });
 }
 
 
 export default function WorkboardTemplate() {
-  const { workboardDoc, boardCards } = useLoaderData<typeof loader>();
+  const { workboardDoc, boardCards, clientFirebaseConfig } = useLoaderData<typeof loader>();
   const [isActiveId, setIsActiveId] = useState<string | null>(null);
   const [openCard, setOpenCard] = useState(false);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   let actionData = useActionData();
-  let submit = useSubmit();
-  let navigation = useNavigation();
+  // let submit = useSubmit();
+  // let navigation = useNavigation();
   let submissionCard = "NgLW3Beffy3KaRSzRTJ3";
+
+  const app = initializeApp(clientFirebaseConfig);
+  const dbClient = getFirestore(app);
+
+  const fetcher = useFetcher();
+  let submit = fetcher.submit;
 
   const openModal = (cardId: string) => {
     setOpenCard(true);
     setOpenCardId(cardId);
   }
 
+  const dragCard = boardCards.find(card => card.cardId === isActiveId)
+    ?? {
+    cardId: "no id",
+    cardTitle: "no title",
+    workboardId: "no id",
+    cardType: "error",
+    archived: false,
+  }
+    ;
 
-  let parsedFormData = navigation.formData
-    ? JSON.parse(navigation.formData.get("moveData") as string)
+
+  let parsedFormData = fetcher.formData
+    ? JSON.parse(fetcher.formData.get("moveData") as string)
     : undefined;
 
   const changeCardLocation = ({
@@ -297,16 +325,23 @@ export default function WorkboardTemplate() {
 
                         {workColumn.cardOrder.map((id: string) => {
 
-                          const workCard = boardCards.find(card => card.cardId === id)
-                            ?? { cardId: id, cardTitle: "no title", };
+                          const workCard = boardCards
+                            .find(card => card.cardId === id)
+                            ?? {
+                            cardId: id,
+                            cardTitle: "error",
+                            workboardId: "no id",
+                            cardType: "error",
+                            archived: false,
+                            userTitle: "error",
+                          };
 
                           return (
                             <SortableItem
                               displayHandle
                               key={id} id={id}>
                               <WorkCard
-                                cardId={id}
-                                openCard={() => openModal(id)}
+                                cardDetails={workCard}
                               />
                             </SortableItem>
                           )
@@ -330,8 +365,7 @@ export default function WorkboardTemplate() {
                 >
 
                   <WorkCard
-                    cardId={isActiveId}
-                    openCard={() => setOpenCard(false)}
+                    cardDetails={dragCard}
                   />
                 </div>
               )
@@ -412,30 +446,31 @@ export default function WorkboardTemplate() {
   }
 }
 
-function WorkCard(props: { cardId: string, openCard: () => void }) {
-  const { cardId, openCard } = props;
+function WorkCard(props: { cardDetails: CardDetailsWID, }) {
+  const { cardDetails } = props;
 
-  const fetcher = useFetcher();
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data == null) {
-      fetcher.load(`/api/card/${cardId}`);
-    }
-  }, [fetcher, cardId])
+  // const fetcher = useFetcher();
+  // useEffect(() => {
+  //   if (fetcher.state === "idle" && fetcher.data == null) {
+  //     fetcher.load(`/api/card/${cardId}`);
+  //   }
+  // }, [fetcher, cardId])
 
-  if (fetcher.state === "loading") {
-    return <div>loading</div>
-  }
+  // if (fetcher.state === "loading") {
+  //   return <div>loading</div>
+  // }
 
-  const userTitle = fetcher.data?.cardDoc?.userTitle;
+  // const userTitle = fetcher.data?.cardDoc?.userTitle;
 
-  const cardTitle = userTitle ?
-    userTitle :
-    fetcher.data?.cardDoc?.cardTitle;
+  const userTitleCheck = z.string().min(1)
 
+  const checkInput = userTitleCheck.safeParse(cardDetails.userTitle)
 
+  const cardTitle = checkInput.success
+    ? cardDetails.userTitle
+    : cardDetails.cardTitle;
 
-
-
+  const cardId = cardDetails.cardId;
 
   return (
     <div

@@ -66,6 +66,9 @@ export async function loader({ params, request }: LoaderArgs) {
   const submissionDoc = await getSubmissionbyId({ profileId, submissionId: cardId });
 
   const cardDetails = await getCardById({ profileId, cardId });
+  if(!cardDetails){
+    return redirect(`/workboard/${profileId}`)
+  }
 
 
   return json({ submissionDoc, reviewStatus, cardDetails });
@@ -111,7 +114,7 @@ export default function CardDetailsPage() {
               <TextField 
                 fieldId="userTitle"
                 label="Title"
-                defaultValue={cardDetails?.userTitle ?? ""}
+                defaultValue={cardDetails?.userTitle ?? cardDetails.cardTitle}
               />
               <TextAreaField
                 fieldId="userNotes"

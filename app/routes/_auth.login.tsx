@@ -28,7 +28,7 @@ export async function action({params, request}:ActionArgs) {
     }
     const session = await getSession(request.headers.get("cookie"));
     session.set("session", sessionCookie);
-    return redirect("/forms", {
+    return redirect("/", {
       headers: {
         "Set-Cookie": await commitSession(session),
       },

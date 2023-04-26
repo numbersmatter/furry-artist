@@ -125,8 +125,7 @@ export default function WorkboardTemplate() {
   // let navigation = useNavigation();
   let submissionCard = "NgLW3Beffy3KaRSzRTJ3";
 
-  const app = initializeApp(clientFirebaseConfig);
-  const dbClient = getFirestore(app);
+  
 
   const fetcher = useFetcher();
   let submit = fetcher.submit;

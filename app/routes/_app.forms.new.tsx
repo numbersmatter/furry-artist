@@ -28,7 +28,8 @@ export async function action({ params, request }: ActionArgs) {
     const data = {
       name: schemaCheck.data.name,
       text: schemaCheck.data.text,
-      sectionOrder: []
+      sectionOrder: [],
+      archived: false,
     };
     const writeToDb = await createNewForm({
       profileId: userDoc?.defaultProfile,

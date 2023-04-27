@@ -22,6 +22,7 @@ export interface FormDoc {
   name: string;
   text: string;
   sectionOrder: string[];
+  archived: boolean;
 }
 
 export interface FormWithStatus extends FormDoc {

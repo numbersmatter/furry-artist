@@ -1,7 +1,9 @@
+import { Switch } from "@headlessui/react";
 import { EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import { Form, useActionData, useFetcher, useLoaderData } from "@remix-run/react";
+import { useState } from "react";
 import { z } from "zod";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
@@ -114,7 +116,7 @@ export default function OpenForms() {
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {forms.map((form) => (
             //@ts-ignore
-            <FormCard key={form.formId} form={form} />
+            <FormCard2 key={form.formId} form={form} />
           ))}
         </ul>
       </div>
@@ -194,27 +196,81 @@ function FormCard({ form }: { form: FormWithStatus }) {
   )
 }
 
-function FormCard2() {
+// @ts-ignore
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ')
+}
+
+
+function FormCard2({ form }: { form: FormWithStatus }) {
+  let fetcher = useFetcher();
+  let submit = fetcher.submit;
+  let formData = new FormData();
+  const open= form.status === "open" ? true : false;
+
+  const _action = open ? "close" : "open";
+
+  formData.append("openId", form.openId);
+  formData.append("_action", _action);
+  formData.append("formId", form.formId);
+  formData.append("profileId", form.profileId);
+
+
+  const isToggling = fetcher.state !== "idle";
+
+  const displayState = isToggling ? !open : open;
+
+  const handletoggleOpen = async () => {
+    await submit(formData, { method: "post" });
+
+  }
+
+
   return (
-    <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
-      <div className="-ml-4 -mt-4 flex flex-wrap items-center justify-between sm:flex-nowrap">
-        <div className="ml-4 mt-4">
-          <h3 className="text-base font-semibold leading-6 text-gray-900">Job Postings</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit quam corrupti consectetur.
-          </p>
+    <div className="overflow-hidden bg-white shadow sm:rounded-lg">
+      <div className="px-4 py-5 sm:p-6">
+        <div className="flex items-center justify-between flex-wrap">
+          <p>{form.name}</p>
+          <button>Delete </button>
         </div>
-        <div className="ml-4 mt-4 flex-shrink-0">
-          <button
-            type="button"
-            className="relative inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        <div
+          className="py-2"
+        >
+          <p>{form.text}</p>
+        </div>
+        <div
+          className="flex justify-between items-center"
+        >
+          <button> edit</button>
+          <div
+            className="flex items-center space-x-2"
           >
-            Create new job
-          </button>
+            <p>
+              {
+                displayState ? "Open" : "Closed"
+              }
+            </p>
+            <Switch
+              checked={open}
+              onChange={()=>handletoggleOpen()}
+              className={classNames(
+                displayState ? 'bg-indigo-600' : 'bg-gray-200',
+                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2'
+              )}
+            >
+              <span className="sr-only">Toggle Form Open State</span>
+              <span
+                aria-hidden="true"
+                className={classNames(
+                  displayState ? 'translate-x-5' : 'translate-x-0',
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
+                )}
+              />
+            </Switch>
+          </div>
         </div>
       </div>
     </div>
   )
-
 }
 

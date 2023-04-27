@@ -1,31 +1,38 @@
+import { Switch } from "@headlessui/react";
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useActionData, useFetcher, useLoaderData } from "@remix-run/react";
-import { getTaskList, updateTask, updateTaskComplete } from "~/server/database/test.server";
+import { useState } from "react";
+import { getTaskList, updateDoc, updateTask, updateTaskComplete } from "~/server/database/test.server";
 
 export async function action({ params, request }: ActionArgs) {
-  const { _action, ...values} = Object.fromEntries( await request.formData());
-   const taskListDoc = await getTaskList();
-  if(!taskListDoc) {
+  const { _action, ...values } = Object.fromEntries(await request.formData());
+  const taskListDoc = await getTaskList();
+  if (!taskListDoc) {
     throw new Error("No tasklist found");
   }
 
 
 
 
-  console.log({values});
-  if(_action === "toggleTask"){
-    const { taskId, complete  } = values;
-    const task = {...taskListDoc.tasks[taskId as string]};
+  console.log({ values });
+  if (_action === "toggleTask") {
+    const { taskId, complete } = values;
+    const task = { ...taskListDoc.tasks[taskId as string] };
     const currentComplete = task.complete;
     task.complete = !currentComplete;
-    const tasks = {...taskListDoc.tasks, [taskId as string]: task};
+    const tasks = { ...taskListDoc.tasks, [taskId as string]: task };
     await updateTask(taskId as string, tasks);
 
-    return json({status: 200});
+    return json({ status: 200 });
+  }
+  
+  if(_action === "toggleOpen") {
+    await updateDoc({ open: !taskListDoc.open})
+    return json({ status: 200 });
   }
 
-  return json({status: 200});
+  return json({ status: 200 });
 }
 
 interface Task {
@@ -37,45 +44,123 @@ interface Task {
 
 export async function loader({ params, request }: LoaderArgs) {
   const tasklistDoc = await getTaskList();
-  if(!tasklistDoc) {
+  if (!tasklistDoc) {
     throw new Error("No tasklist found");
   }
   const tasklist = tasklistDoc.taskOrder
-  .map((taskId) => ({...tasklistDoc.tasks[taskId], id: taskId}));
+    .map((taskId) => ({ ...tasklistDoc.tasks[taskId], id: taskId }));
+
+  const open = tasklistDoc.open;
 
 
 
-
-
-  // const tasklist: Task[]  = [
-  //   { id:"1", name: "Intial Sketch", progress: 10, complete: true },
+  // const tasklist2: Task[]  = [
+  //   { id:"1", name: "Intial Sketch", progress: 110, complete: true },
   //   { id:"2", name: "Detailed Sketch", progress: 30, complete: true },
   //   { id:"3", name: "Linework", progress: 30, complete: false },
   //   { id:"4", name: "Color", progress: 20, complete: false },
   //   { id:"5", name: "Lighting & Effects", progress: 10, complete: false },
   // ];
 
-  return json({tasklist});
+  return json({ tasklist, open });
 }
 
 
 
 export default function WorkboardArtistCard() {
-  const {tasklist } = useLoaderData<typeof loader>();
+  const { tasklist, open } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  return (
+    <>
+      <div className="overflow-hidden bg-white shadow sm:rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          {actionData ?
+            <p>{JSON.stringify(actionData)}</p>
+            : <p>{" "}</p>
+          }
+          <TitleNotesForm />
+          <ProgressTaskList tasklist={tasklist} />
+        </div>
+      </div>
+      <div className="py-2 px-3">
+        <FormCard2 open={open} />
+      </div>
+    </>
+  );
+}
+
+// @ts-ignore
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ')
+}
+
+
+function FormCard2({ open }: { open: boolean }) {
+  let fetcher = useFetcher();
+  let submit = fetcher.submit;
+  let formData = new FormData();
+  formData.append("formId", "123");
+  formData.append("_action", "toggleOpen");
+
+  const isToggling = fetcher.state !== "idle";
+
+  const displayState = isToggling ? !open : open;
+
+  const handletoggleOpen = async () => {
+    await submit(formData, { method: "post" });
+
+  }
+
+
   return (
     <div className="overflow-hidden bg-white shadow sm:rounded-lg">
       <div className="px-4 py-5 sm:p-6">
-        { actionData ?
-          <p>{JSON.stringify(actionData)}</p>
-          : <p>{" "}</p>       
-      }
-        <TitleNotesForm />
-        <ProgressTaskList tasklist={tasklist} />
+        <div className="flex items-center justify-between flex-wrap">
+          <p>Milachu Standard Commission</p>
+          <button>Delete </button>
+        </div>
+        <div
+          className="py-2"
+        >
+          <p>This is my standard commission form</p>
+        </div>
+        <div
+          className="flex justify-between items-center"
+        >
+          <button> edit</button>
+          <div
+            className="flex items-center space-x-2"
+          >
+            <p>
+              {
+                displayState ? "Open" : "Closed"
+              }
+            </p>
+            <Switch
+              checked={open}
+              onChange={()=>handletoggleOpen()}
+              className={classNames(
+                displayState ? 'bg-indigo-600' : 'bg-gray-200',
+                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2'
+              )}
+            >
+              <span className="sr-only">Toggle Form Open State</span>
+              <span
+                aria-hidden="true"
+                className={classNames(
+                  displayState ? 'translate-x-5' : 'translate-x-0',
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
+                )}
+              />
+            </Switch>
+          </div>
+        </div>
       </div>
     </div>
-  );
+  )
+
 }
+
 
 function TitleNotesForm() {
   return (
@@ -119,7 +204,7 @@ function ProgressTaskList({ tasklist }: { tasklist: Task[] }) {
     <fieldset
       className="py-2"
     >
-      <h4 className="">Progress {100 * completedProgress/totalSize}%</h4>
+      <h4 className="">Progress {100 * completedProgress / totalSize}%</h4>
       <div className="space-y-2">
         {tasklist.map((task) => (
           <TaskItem key={task.id} task={task} totalSize={totalSize} />
@@ -138,11 +223,11 @@ function TaskItem({ task, totalSize }: { task: Task, totalSize: number }) {
   formData.append("_action", "toggleTask")
   formData.append("complete", task.complete ? "false" : "true");
 
-  if(fetcher.submission) {
+  if (fetcher.submission) {
     console.log(fetcher.submission);
   }
 
-  const handleClick = async (e: React.MouseEvent<HTMLInputElement>) => {
+  const handleClick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.currentTarget.checked;
     submit(formData, { method: "post" })
   }
@@ -158,7 +243,7 @@ function TaskItem({ task, totalSize }: { task: Task, totalSize: number }) {
           name={task.id}
           type="checkbox"
           checked={isUpdating ? !task.complete : task.complete}
-          onClick={(e)=>handleClick(e)}
+          onChange={(e) => handleClick(e)}
           className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
         />
       </div>

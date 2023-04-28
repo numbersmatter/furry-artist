@@ -435,13 +435,8 @@ export default function WorkboardTemplate() {
     formData.append("moveData", JSON.stringify(moveData));
     formData.append("_action", "moveCard")
     submit(formData, { method: "POST" })
-    console.log(moveData)
 
     return;
-
-
-
-
   }
 }
 

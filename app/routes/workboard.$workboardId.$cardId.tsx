@@ -1,7 +1,9 @@
 import { Dialog, Switch } from "@headlessui/react";
+import { ChevronLeftIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
 import { ActionArgs, LoaderArgs, Response } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { getOpeningById, SectionData } from "~/server/database/openings.server";
 import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
@@ -45,38 +47,38 @@ export async function action({ params, request }: ActionArgs) {
         userTitle: checkInput.data.userTitle
       }
     })
-    return json({ status: 200 })
+    return json({ success: "true", status: 200 })
   }
 
-  if(_action === "addDefaultProgressList") {
-    
-    const tasklist2: TaskWID[]  = [
-      { taskId:"1", name: "Intial Sketch", progress: 10, complete: true },
-      { taskId:"2", name: "Detailed Sketch", progress: 30, complete: true },
-      { taskId:"3", name: "Linework", progress: 30, complete: false },
-      { taskId:"4", name: "Color", progress: 20, complete: false },
-      { taskId:"5", name: "Lighting & Effects", progress: 10, complete: false },
+  if (_action === "addDefaultProgressList") {
+
+    const tasklist2: TaskWID[] = [
+      { taskId: "1", name: "Intial Sketch", progress: 10, complete: true },
+      { taskId: "2", name: "Detailed Sketch", progress: 30, complete: true },
+      { taskId: "3", name: "Linework", progress: 30, complete: false },
+      { taskId: "4", name: "Color", progress: 20, complete: false },
+      { taskId: "5", name: "Lighting & Effects", progress: 10, complete: false },
     ];
-    
-    
+
+
     const defaultProgressTracker: ProgressTracker = {
       tasks: {
-      "1": {name: "Intial Sketch", progress: 10, complete: false },
-      "2": {name: "Detailed Sketch", progress: 30, complete: false },
-      "3": {name: "Linework", progress: 30, complete: false },
-      "4": {name: "Color", progress: 20, complete: false },
-      "5": {name: "Lighting & Effects", progress: 10, complete: false },
+        "1": { name: "Intial Sketch", progress: 10, complete: false },
+        "2": { name: "Detailed Sketch", progress: 30, complete: false },
+        "3": { name: "Linework", progress: 30, complete: false },
+        "4": { name: "Color", progress: 20, complete: false },
+        "5": { name: "Lighting & Effects", progress: 10, complete: false },
       },
-      taskOrder: ["1","2","3","4","5"]
+      taskOrder: ["1", "2", "3", "4", "5"]
     }
-    
+
     await updateCard({
       profileId,
       cardId: params.cardId as string,
       cardDetails: {
         progressTracker: defaultProgressTracker
-        }
-      
+      }
+
     })
     return json({ status: 200 })
   }
@@ -96,9 +98,9 @@ export async function action({ params, request }: ActionArgs) {
         progressTracker: {
           taskOrder: currentTaskOrder,
           tasks
-          }
         }
-      });
+      }
+    });
 
     return json({ status: 200 });
   }
@@ -164,6 +166,7 @@ export default function CardDetailsPage() {
   const actionData = useLoaderData<typeof action>();
   const navigate = useNavigate();
 
+
   return (
     <Dialog
       open={true}
@@ -180,7 +183,13 @@ export default function CardDetailsPage() {
           >
             <Dialog.Title className="px-4 pt-4 text-3xl font-medium text-gray-900"
             >
-              {cardDetails?.userTitle ?? cardDetails?.cardTitle}
+              <button
+                onClick={() => { navigate("/workboard/") }}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                <ChevronLeftIcon className="w-6 h-6" />
+                Back
+              </button>
             </Dialog.Title>
             {/* <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
              
@@ -229,7 +238,15 @@ export default function CardDetailsPage() {
             <>
               <div className="overflow-hidden bg-white shadow sm:rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
-                  <TitleNotesForm title={cardDetails.userTitle ?? cardDetails.cardTitle} text={cardDetails.userNotes ?? ""} />
+                  <EditOrDisplayTitle 
+                    title={cardDetails.userTitle ?? cardDetails.cardTitle}
+                    text={cardDetails.userNotes ?? ""}
+                  />
+                  {/* {
+                    isEditing ?
+                      <TitleNotesForm changeEdit={changeEdit} title={cardDetails.userTitle ?? cardDetails.cardTitle} text={cardDetails.userNotes ?? ""} />
+                      : <TitleNotesDisplay changeEdit={changeEdit} title={cardDetails.userTitle ?? cardDetails.cardTitle} text={cardDetails.userNotes ?? ""} />
+                  } */}
                   {
                     tasklist.length > 0
                       ? <ProgressTaskList tasklist={tasklist} />
@@ -281,6 +298,70 @@ export default function CardDetailsPage() {
     </Dialog>
   );
 }
+
+function EditOrDisplayTitle(
+  { title, text, }: { title: string, text: string, }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const changeEdit = () => setIsEditing(!isEditing)
+  const fetcher = useFetcher();
+
+  let userState: "idle" | "success" | "error" | "submitting" = fetcher
+    .state === "submitting"
+    ? "submitting"
+    : fetcher.data?.success
+      ? "success"
+      : fetcher.data?.error
+        ? "error"
+        : "idle"
+
+  const displayTitle = fetcher.formData?.get("userTitle") 
+  ? fetcher.formData.get("userTitle") as string
+  :title;
+
+  const displayText = fetcher.formData?.get("userNotes")
+  ? fetcher.formData.get("userNotes") as string
+  : text;
+
+  
+  useEffect(()=>{
+    if(userState === "success"){
+      setIsEditing(false)
+    }
+  },[userState])
+  
+
+
+  return (
+    <>
+      <fetcher.Form
+        method="post" 
+        hidden={!isEditing}
+      >
+        <TitleNotesForm changeEdit={changeEdit} title={title} text={text} />
+        <p>{userState === "error" ? fetcher.data.error : <>&nbsp;</>}</p>
+        <div>
+          <button
+            className="bg-indigo-600 text-white px-2 py-1 rounded-md"
+            type="submit"
+          >
+            Save
+          </button>
+        </div>
+      </fetcher.Form>
+      <div
+        hidden={isEditing}
+      >
+        <TitleNotesDisplay changeEdit={changeEdit} title={displayTitle} text={displayText} />
+      </div>
+    </>
+  )
+
+
+
+
+}
+
+
 
 function FormCard2({ open }: { open: boolean }) {
   let fetcher = useFetcher();
@@ -348,12 +429,33 @@ function FormCard2({ open }: { open: boolean }) {
 
 }
 
+function TitleNotesDisplay({ title, text, changeEdit }
+  : { title: string, text: string, changeEdit: () => void }) {
 
-function TitleNotesForm({ title, text}:{title:string, text:string}) {
-  const fetcher = useFetcher();
   return (
-    <fetcher.Form method="POST" replace
-      className="flex flex-col gap-y-2 min-w-"
+    <div className="py-2 flex flex-col gap-y-2">
+      <button
+        onClick={() => changeEdit()}
+        className="flex items-center space-x-2"
+      >
+
+        <h2
+          className="text-2xl font-semibold leading-6 text-gray-900 capitalize"
+        >{title}</h2> <PencilSquareIcon className="w-6 h-6 text-gray-500" />
+      </button>
+      <p
+        className="pb-3 text-xl text-gray-500"
+      >{text}</p>
+    </div>
+  )
+
+}
+
+function TitleNotesForm({ title, text, changeEdit }: { title: string, text: string, changeEdit: () => void }) {
+
+  return (
+    <div
+      className="flex flex-col gap-y-2"
     >
       <div
         className="max-w-lg "
@@ -364,7 +466,7 @@ function TitleNotesForm({ title, text}:{title:string, text:string}) {
           placeholder="Title"
           defaultValue={title}
         />
-        <input hidden name="_action" value="saveUserNote"/>
+        <input hidden readOnly name="_action" value="saveUserNote" />
       </div>
       <div
         className="max-w-lg"
@@ -378,14 +480,8 @@ function TitleNotesForm({ title, text}:{title:string, text:string}) {
           defaultValue={text}
           className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
       </div>
-      <div>
-        <button
-          type="submit"
-        >
-          Save
-        </button>
-      </div>
-    </fetcher.Form>
+
+    </div>
   )
 }
 
@@ -401,7 +497,7 @@ function AddDefaultProgressList({ cardId }: { cardId: string }) {
     >
 
       <button
-       className="bg-indigo-600 text-white px-2 py-1 rounded-md"
+        className="bg-indigo-600 text-white px-2 py-1 rounded-md"
         onClick={() => submit(formData, { method: "post" })}
       >
         Add Default Progress List
@@ -438,9 +534,7 @@ function TaskItem({ task, totalSize }: { task: TaskWID, totalSize: number }) {
   formData.append("_action", "toggleTask")
   formData.append("complete", task.complete ? "false" : "true");
 
-  if (fetcher.submission) {
-    console.log(fetcher.submission);
-  }
+  
 
   const handleClick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.currentTarget.checked;

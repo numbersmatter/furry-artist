@@ -54,13 +54,13 @@ export async function loader({ params, request }: LoaderArgs) {
 
 
 
-  // const tasklist2: Task[]  = [
-  //   { id:"1", name: "Intial Sketch", progress: 110, complete: true },
-  //   { id:"2", name: "Detailed Sketch", progress: 30, complete: true },
-  //   { id:"3", name: "Linework", progress: 30, complete: false },
-  //   { id:"4", name: "Color", progress: 20, complete: false },
-  //   { id:"5", name: "Lighting & Effects", progress: 10, complete: false },
-  // ];
+  const tasklist2: Task[]  = [
+    { id:"1", name: "Intial Sketch", progress: 110, complete: true },
+    { id:"2", name: "Detailed Sketch", progress: 30, complete: true },
+    { id:"3", name: "Linework", progress: 30, complete: false },
+    { id:"4", name: "Color", progress: 20, complete: false },
+    { id:"5", name: "Lighting & Effects", progress: 10, complete: false },
+  ];
 
   return json({ tasklist, open });
 }

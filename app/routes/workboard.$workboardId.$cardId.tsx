@@ -1,11 +1,11 @@
-import { Dialog } from "@headlessui/react";
+import { Dialog, Switch } from "@headlessui/react";
 import { ActionArgs, LoaderArgs, Response } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, Link, useLoaderData, useNavigate } from "@remix-run/react";
+import { Form, Link, useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
 import { z } from "zod";
 import { getOpeningById, SectionData } from "~/server/database/openings.server";
 import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
-import { addSubmissionToWorkboard, getCardById, updateCard } from "~/server/database/workboard.server";
+import { addSubmissionToWorkboard, getCardById, ProgressTracker, Task, TaskWID, updateCard } from "~/server/database/workboard.server";
 import { baseLoader } from "~/server/user.server";
 import { Field } from "~/ui/StackedFields/StackFields";
 import TextAreaField from "~/ui/StackedFields/TextArea";
@@ -15,6 +15,11 @@ export async function action({ params, request }: ActionArgs) {
   const { profileId, userRecord } = await baseLoader(request);
   if (!userRecord) return redirect('/login');
   if (!profileId) return redirect('/setup-profile');
+
+  const cardDetails = await getCardById({ profileId, cardId: params.cardId as string });
+  if (!cardDetails) {
+    return json({ error: "No card found" }, { status: 404 });
+  }
 
   const intialFormData = Object.fromEntries(await request.formData());
 
@@ -26,22 +31,79 @@ export async function action({ params, request }: ActionArgs) {
     userTitle: z.string().optional()
   });
 
-  if (_action === "saveUserNote"){
+  if (_action === "saveUserNote") {
     const checkInput = NotesSchema.safeParse(values);
-    if(!checkInput.success){
+    if (!checkInput.success) {
       return json({ error: "Failed Parse", issues: checkInput.error.issues });
 
     }
     await updateCard({
       profileId,
       cardId: params.cardId as string,
-      cardDetails:{
-      userNotes: checkInput.data.userNotes,
-      userTitle: checkInput.data.userTitle
-    }
+      cardDetails: {
+        userNotes: checkInput.data.userNotes,
+        userTitle: checkInput.data.userTitle
+      }
     })
     return json({ status: 200 })
   }
+
+  if(_action === "addDefaultProgressList") {
+    
+    const tasklist2: TaskWID[]  = [
+      { taskId:"1", name: "Intial Sketch", progress: 10, complete: true },
+      { taskId:"2", name: "Detailed Sketch", progress: 30, complete: true },
+      { taskId:"3", name: "Linework", progress: 30, complete: false },
+      { taskId:"4", name: "Color", progress: 20, complete: false },
+      { taskId:"5", name: "Lighting & Effects", progress: 10, complete: false },
+    ];
+    
+    
+    const defaultProgressTracker: ProgressTracker = {
+      tasks: {
+      "1": {name: "Intial Sketch", progress: 10, complete: false },
+      "2": {name: "Detailed Sketch", progress: 30, complete: false },
+      "3": {name: "Linework", progress: 30, complete: false },
+      "4": {name: "Color", progress: 20, complete: false },
+      "5": {name: "Lighting & Effects", progress: 10, complete: false },
+      },
+      taskOrder: ["1","2","3","4","5"]
+    }
+    
+    await updateCard({
+      profileId,
+      cardId: params.cardId as string,
+      cardDetails: {
+        progressTracker: defaultProgressTracker
+        }
+      
+    })
+    return json({ status: 200 })
+  }
+
+  if (_action === "toggleTask") {
+    const { taskId, complete } = values;
+    const currentTasks = cardDetails?.progressTracker?.tasks ?? {};
+    const currentTaskOrder = cardDetails?.progressTracker?.taskOrder ?? [];
+    const task = { ...currentTasks[taskId as string] };
+    const currentComplete = task.complete;
+    task.complete = !currentComplete;
+    const tasks = { ...currentTasks, [taskId as string]: task };
+    await updateCard({
+      profileId,
+      cardId: params.cardId as string,
+      cardDetails: {
+        progressTracker: {
+          taskOrder: currentTaskOrder,
+          tasks
+          }
+        }
+      });
+
+    return json({ status: 200 });
+  }
+
+
 
   // const intentId = params.submissionsId as string;
   // const newStatus = _action as "hold" | "accepted" | "declined";
@@ -66,18 +128,40 @@ export async function loader({ params, request }: LoaderArgs) {
   const submissionDoc = await getSubmissionbyId({ profileId, submissionId: cardId });
 
   const cardDetails = await getCardById({ profileId, cardId });
-  if(!cardDetails){
+  if (!cardDetails) {
     return redirect(`/workboard/${profileId}`)
   }
 
+  const defaultProgressTracker: ProgressTracker = {
+    tasks: {},
+    taskOrder: []
+  }
 
-  return json({ submissionDoc, reviewStatus, cardDetails });
+  const progressTracker = cardDetails.progressTracker ?? defaultProgressTracker;
+
+  const tasklist = progressTracker.taskOrder.map((taskId) => ({ ...progressTracker.tasks[taskId], taskId: taskId }));
+
+
+
+  return json({ submissionDoc, reviewStatus, cardDetails, tasklist });
+}
+
+// @ts-ignore
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ')
 }
 
 
 
+
 export default function CardDetailsPage() {
-  const { submissionDoc, reviewStatus, cardDetails } = useLoaderData<typeof loader>();
+  const {
+    submissionDoc,
+    reviewStatus,
+    cardDetails,
+    tasklist,
+  } = useLoaderData<typeof loader>();
+  const actionData = useLoaderData<typeof action>();
   const navigate = useNavigate();
 
   return (
@@ -98,15 +182,15 @@ export default function CardDetailsPage() {
             >
               {cardDetails?.userTitle ?? cardDetails?.cardTitle}
             </Dialog.Title>
-            <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            {/* <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
              
               <h3 className="mt-1 max-w-2xl text-xl text-gray-500">
                 Request Details
               </h3>
               <p>
               </p>
-            </div>
-            <Form
+            </div> */}
+            {/* <Form
               method="POST"
               replace
               className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4 rounded-md border-2 border-gray-200"
@@ -141,7 +225,22 @@ export default function CardDetailsPage() {
               </Link>
                 </div>
 
-            </Form>
+            </Form> */}
+            <>
+              <div className="overflow-hidden bg-white shadow sm:rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <TitleNotesForm title={cardDetails.userTitle ?? cardDetails.cardTitle} text={cardDetails.userNotes ?? ""} />
+                  {
+                    tasklist.length > 0
+                      ? <ProgressTaskList tasklist={tasklist} />
+                      : <AddDefaultProgressList cardId={cardDetails.cardId} />
+                  }
+                </div>
+              </div>
+            </>
+
+
+
             {
               submissionDoc
                 ?
@@ -166,7 +265,7 @@ export default function CardDetailsPage() {
                           return <SectionDisplay key={index} submittedSection={section} />
                         })
                       }
-                     
+
                     </div>
                   </div>
                 </article>
@@ -180,10 +279,203 @@ export default function CardDetailsPage() {
       </div>
 
     </Dialog>
-
-
   );
 }
+
+function FormCard2({ open }: { open: boolean }) {
+  let fetcher = useFetcher();
+  let submit = fetcher.submit;
+  let formData = new FormData();
+  formData.append("formId", "123");
+  formData.append("_action", "toggleOpen");
+
+  const isToggling = fetcher.state !== "idle";
+
+  const displayState = isToggling ? !open : open;
+
+  const handletoggleOpen = async () => {
+    await submit(formData, { method: "post" });
+
+  }
+
+
+  return (
+    <div className="overflow-hidden bg-white shadow sm:rounded-lg">
+      <div className="px-4 py-5 sm:p-6">
+        <div className="flex items-center justify-between flex-wrap">
+          <p>Milachu Standard Commission</p>
+          <button>Delete </button>
+        </div>
+        <div
+          className="py-2"
+        >
+          <p>This is my standard commission form</p>
+        </div>
+        <div
+          className="flex justify-between items-center"
+        >
+          <button> edit</button>
+          <div
+            className="flex items-center space-x-2"
+          >
+            <p>
+              {
+                displayState ? "Open" : "Closed"
+              }
+            </p>
+            <Switch
+              checked={open}
+              onChange={() => handletoggleOpen()}
+              className={classNames(
+                displayState ? 'bg-indigo-600' : 'bg-gray-200',
+                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2'
+              )}
+            >
+              <span className="sr-only">Toggle Form Open State</span>
+              <span
+                aria-hidden="true"
+                className={classNames(
+                  displayState ? 'translate-x-5' : 'translate-x-0',
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
+                )}
+              />
+            </Switch>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+}
+
+
+function TitleNotesForm({ title, text}:{title:string, text:string}) {
+  const fetcher = useFetcher();
+  return (
+    <fetcher.Form method="POST" replace
+      className="flex flex-col gap-y-2 min-w-"
+    >
+      <div
+        className="max-w-lg "
+      >
+        <input
+          name="userTitle"
+          className="block w-full text-xl rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+          placeholder="Title"
+          defaultValue={title}
+        />
+        <input hidden name="_action" value="saveUserNote"/>
+      </div>
+      <div
+        className="max-w-lg"
+      >
+        <label className="text-sm">
+          Personal Notes
+        </label>
+        <textarea
+          name="userNotes"
+          rows={4}
+          defaultValue={text}
+          className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
+      </div>
+      <div>
+        <button
+          type="submit"
+        >
+          Save
+        </button>
+      </div>
+    </fetcher.Form>
+  )
+}
+
+function AddDefaultProgressList({ cardId }: { cardId: string }) {
+  const fetcher = useFetcher();
+  let submit = fetcher.submit;
+  let formData = new FormData();
+  formData.append("cardId", cardId);
+  formData.append("_action", "addDefaultProgressList");
+  return (
+    <div
+      className="py-2 "
+    >
+
+      <button
+       className="bg-indigo-600 text-white px-2 py-1 rounded-md"
+        onClick={() => submit(formData, { method: "post" })}
+      >
+        Add Default Progress List
+      </button>
+    </div>
+  )
+}
+
+function ProgressTaskList({ tasklist }: { tasklist: TaskWID[] }) {
+  const completedProgress = tasklist.reduce((acc, task) => acc + (task.complete ? task.progress : 0), 0);
+
+  const totalSize = tasklist.reduce((acc, task) => acc + task.progress, 0);
+
+  return (
+    <fieldset
+      className="py-2"
+    >
+      <h4 className="">Progress {100 * completedProgress / totalSize}%</h4>
+      <div className="space-y-2">
+        {tasklist.map((task) => (
+          <TaskItem key={task.taskId} task={task} totalSize={totalSize} />
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
+function TaskItem({ task, totalSize }: { task: TaskWID, totalSize: number }) {
+
+  const fetcher = useFetcher();
+  let submit = fetcher.submit;
+  let formData = new FormData();
+  formData.append("taskId", task.taskId);
+  formData.append("_action", "toggleTask")
+  formData.append("complete", task.complete ? "false" : "true");
+
+  if (fetcher.submission) {
+    console.log(fetcher.submission);
+  }
+
+  const handleClick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.currentTarget.checked;
+    submit(formData, { method: "post" })
+  }
+
+  const isUpdating = fetcher.state !== "idle";
+
+  return (
+    <fetcher.Form className="relative flex items-start">
+      <div className="flex h-6 items-center">
+        <input
+          id={task.taskId}
+          aria-describedby={`${task.taskId}-description`}
+          name={task.taskId}
+          type="checkbox"
+          checked={isUpdating ? !task.complete : task.complete}
+          onChange={(e) => handleClick(e)}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+        />
+      </div>
+      <div className="ml-3 text-sm leading-6">
+        <label htmlFor={task.taskId} className="font-medium text-gray-900">
+          {task.name}
+        </label>{' '}
+        <span id={`${task.taskId}-description`} className="text-gray-500">
+          <span className="sr-only">{task.name} </span>({task.progress / totalSize * 100}%)
+        </span>
+      </div>
+    </fetcher.Form>
+  )
+}
+
+
+
 
 function StatusForm(
   { submitId, reviewStatus }:

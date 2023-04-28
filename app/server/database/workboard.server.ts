@@ -6,6 +6,20 @@ export interface ColumnDetails {
   columnTitle: string;
   columnDescription: string;
   cardOrder: string[];
+};
+
+export interface Task {
+  name: string;
+  progress: number;
+  complete: boolean;
+};
+export interface TaskWID extends Task {
+  taskId: string;
+};
+
+export interface ProgressTracker {
+  tasks: { [key: string]: Task };
+  taskOrder: string[];
 }
 
 export interface ColumnDetailsWID extends ColumnDetails {
@@ -18,7 +32,8 @@ export interface CardDetails {
   workboardId: string;
   archived: boolean;
   userTitle?: string;
-  userNotes?: string; 
+  userNotes?: string;
+  progressTracker?: ProgressTracker; 
 }
 
 export interface CardDetailsWID extends CardDetails {
@@ -66,6 +81,7 @@ export const updateCard = async ({
   cardDetails: Partial<CardDetails>;
 }) => {
   const cardRef = workboardDb.cards(profileId).doc(cardId);
+  // @ts-ignore
   await cardRef.update(cardDetails);
 };
 

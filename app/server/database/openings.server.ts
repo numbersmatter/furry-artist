@@ -56,10 +56,10 @@ export const updateOpenDocStatus = async ({
   status,
 }: {
   profileId: string | undefined;
-  openId: string;
+  openId: string | undefined;
   status: "open" | "closed";
 }) => {
-  if (!profileId) {
+  if (!profileId || !openId) {
     return;
   }
   const docRef = openingsDb.openings(profileId).doc(openId);

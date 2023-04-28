@@ -59,11 +59,26 @@ export const getAllForms = async ({
 }:{ profileId: string | undefined;
 }) => {
   if (!profileId) { return []; }
-  const colRef = formsDb.forms(profileId);
+  const colRef = formsDb.forms(profileId).where("archived", "==", false);
   const colSnap = await colRef.get();
   const formsDocs = colSnap.docs.map((snap )=>({...snap.data(), formId: snap.id}))
   return formsDocs;
-}
+};
+
+export const updateFormDoc = async ({
+  profileId,
+  formId,
+  updateData,
+}: {
+  profileId: string | undefined;
+  formId: string | undefined;
+  updateData: Partial<FormDoc>;
+}) => {
+  if (!profileId || !formId) { return; }
+  const docRef = formsDb.forms(profileId).doc(formId);
+  const updateToDb = await docRef.set(updateData, { merge: true });
+  return updateToDb;
+};
 
 export const deleteSelectOption = async ({
   profileId,

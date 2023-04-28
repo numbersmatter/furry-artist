@@ -2,12 +2,12 @@ import { Switch } from "@headlessui/react";
 import { EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, useActionData, useFetcher, useLoaderData } from "@remix-run/react";
+import { Form, Link, useActionData, useFetcher, useLoaderData } from "@remix-run/react";
 import { useState } from "react";
 import { z } from "zod";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import type { FormWithStatus } from "~/server/database/forms.server";
+import { FormWithStatus, updateFormDoc } from "~/server/database/forms.server";
 import { getAllForms } from "~/server/database/forms.server";
 import { createNewOpening, getOpenForms, updateOpenDocStatus } from "~/server/database/openings.server";
 
@@ -37,7 +37,7 @@ export async function action({ params, request }: ActionArgs) {
       return checkValues.error;
     }
   }
-
+  
   if (_action === "open") {
     if (!checkValues.success) {
       return json({ error: checkValues.error.issues })
@@ -49,6 +49,27 @@ export async function action({ params, request }: ActionArgs) {
       return json({ success: true, writeOpen: writeOpen ?? "none" });
     }
   }
+  
+  if (_action === "delete") {
+    if (checkValues.success) {
+      // await updateOpenDocStatus({
+      //   profileId: checkValues.data.profileId,
+      //   openId: checkValues.data.openId,
+      //   status: "closed",
+      // })
+      await updateFormDoc({
+        profileId: checkValues.data.profileId,
+        formId: checkValues.data.formId,
+        updateData:{
+          archived: true,
+        }
+      })
+      return redirect("/forms/open-forms");
+    } else {
+      return checkValues.error;
+    }
+  }
+
 
 
 }
@@ -205,43 +226,64 @@ function classNames(...classes) {
 function FormCard2({ form }: { form: FormWithStatus }) {
   let fetcher = useFetcher();
   let submit = fetcher.submit;
-  let formData = new FormData();
   const open= form.status === "open" ? true : false;
-
-  const _action = open ? "close" : "open";
-
-  formData.append("openId", form.openId);
-  formData.append("_action", _action);
-  formData.append("formId", form.formId);
-  formData.append("profileId", form.profileId);
-
-
+  
+  
+  
   const isToggling = fetcher.state !== "idle";
-
   const displayState = isToggling ? !open : open;
 
   const handletoggleOpen = async () => {
+    const _action = open ? "close" : "open";
+    let formData = new FormData();
+    formData.append("openId", form.openId);
+    formData.append("_action", _action);
+    formData.append("formId", form.formId);
+    formData.append("profileId", form.profileId);
     await submit(formData, { method: "post" });
-
+    
+  };
+  
+  const handleDelete = async () => {
+    const _action = "delete"    
+    let formData = new FormData();
+    formData.append("_action", _action);
+    formData.append("formId", form.formId);
+    formData.append("profileId", form.profileId);
+    formData.append("openId", form.openId);
+    await submit(formData, { method: "post" });
+    
   }
-
 
   return (
     <div className="overflow-hidden bg-white shadow sm:rounded-lg">
-      <div className="px-4 py-5 sm:p-6">
-        <div className="flex items-center justify-between flex-wrap">
-          <p>{form.name}</p>
-          <button>Delete </button>
+      <div className="px-4 grid grid-rows-3 content-stretch ">
+        <div className="pt-1 flex items-center justify-between ">
+          <p
+           className="text-lg font-semibold text-gray-900 truncate"
+          >{form.name}</p>
+          <button
+            className="px-4 py-2 bg-red-500 text-white rounded-lg disabled:bg-slate-300"
+            disabled={displayState}
+            onClick={()=>handleDelete()}
+          >
+            Delete 
+          </button>
         </div>
         <div
-          className="py-2"
+          className="py-2 flex-1"
         >
-          <p>{form.text}</p>
+          <p>{""}{form.text}</p>
         </div>
         <div
-          className="flex justify-between items-center"
+          className="mt-auto  pb-2 flex justify-between items-center"
         >
-          <button> edit</button>
+          <Link
+            to={`/forms/${form.formId}`}
+            className=" px-4 py-2 rounded-lg border-1 bg-indigo-600 text-white hover:bg-indigo-900" 
+          > 
+            edit
+          </Link>
           <div
             className="flex items-center space-x-2"
           >

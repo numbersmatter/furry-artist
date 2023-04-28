@@ -1,17 +1,34 @@
-import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/react/20/solid";
+import { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, PencilSquareIcon, Squares2X2Icon } from "@heroicons/react/20/solid";
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, Link, useActionData, useFetcher, useLoaderData } from "@remix-run/react";
+import { Form, Link, useActionData, useFetcher, useLoaderData, useSubmit } from "@remix-run/react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 import { requireAuth } from "~/server/auth.server";
 import { getUserDoc } from "~/server/database/db.server";
-import { FormSection, removeSectionFromForm } from "~/server/database/forms.server";
+import { FormSection, removeSectionFromForm, updateFormDoc } from "~/server/database/forms.server";
 import { addSectionToForm } from "~/server/database/forms.server";
 import { moveArrayElement, updateFormDocSectionOrder } from "~/server/database/forms.server";
 import { getFormById, getFormSections } from "~/server/database/forms.server";
+import EditOrDisplayTitle from "~/ui/SmartComponents/EditOrDisplayBasicInfo";
 import type { Field } from "~/ui/StackedFields/StackFields";
 import StackedField from "~/ui/StackedFields/StackFields";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableItem } from "~/ui/Workboard/SortItem";
+import { SortVerticalItem } from "~/ui/SmartComponents/SortVerticalItem";
 
 export async function action({ params, request }: ActionArgs) {
   const userRecord = await requireAuth(request);
@@ -32,6 +49,27 @@ export async function action({ params, request }: ActionArgs) {
 
   const indexOfSectionId = sectionOrder.findIndex(sectionId => sectionId === values.sectionId)
 
+
+  if(_action === "editBasic") {
+    const EditSchema = z.object({
+      title: z.string().min(2, "Title must be at least 2 characters"),
+      text: z.string().min(2, "Notes must be at least 2 characters"),
+    })
+    const schemaCheck = EditSchema.safeParse(values);
+    if (!schemaCheck.success) {
+      return { error: true, errorData: schemaCheck.error.issues }
+    }
+    await updateFormDoc({
+      profileId: userDoc?.defaultProfile,
+      formId: params.formId,
+      updateData: {
+      name: schemaCheck.data.title,
+      text: schemaCheck.data.text,
+      }
+    })
+    return json({ success: "true", status: 200 })
+  }
+
   // if (indexOfSectionId < 0) {
   //   return json({})
   // }
@@ -40,7 +78,7 @@ export async function action({ params, request }: ActionArgs) {
     sectionId: z.string().min(2, "Section ID must be at least 2 characters"),
   })
 
-  if(_action === "removeSection") {
+  if (_action === "removeSection") {
     const schemaCheck = AddSchema.safeParse(values);
     if (!schemaCheck.success) {
       return { error: true, errorData: schemaCheck.error.issues }
@@ -70,35 +108,29 @@ export async function action({ params, request }: ActionArgs) {
     }
   }
 
-  if (_action === "moveUp") {
-    const newIndexRaw = indexOfSectionId - 1;
-    const newIndex = newIndexRaw < 0 ? 0 : newIndexRaw;
+ 
 
-    const newSectionOrder = moveArrayElement(sectionOrder, indexOfSectionId, newIndex)
-
-    const writeToDb = await updateFormDocSectionOrder({
-      profileId: userDoc?.defaultProfile,
-      formId: params.formId,
-      newSectionOrder
-    });
-    return writeToDb;
-  }
-  if (_action === "moveDown") {
-    const newIndexRaw = indexOfSectionId + 1;
+  if (_action === "sortList") {
+    const SortListSchema = z.object({
+      oldIndex: z.coerce.number(),
+      newIndex: z.coerce.number(),
+    })
+    const schemaCheck = SortListSchema.safeParse(values);
+    if (!schemaCheck.success) {
+      return { error: true, errorData: schemaCheck.error.issues }
+    }
 
     const newSectionOrder = moveArrayElement(
       sectionOrder,
-      indexOfSectionId,
-      newIndexRaw
-    )
-
+      schemaCheck.data.oldIndex,
+      schemaCheck.data.newIndex
+    );
     const writeToDb = await updateFormDocSectionOrder({
       profileId: userDoc?.defaultProfile,
       formId: params.formId,
       newSectionOrder
     });
     return writeToDb;
-
   }
 
 
@@ -142,40 +174,192 @@ export async function loader({ params, request }: LoaderArgs) {
 
 
 export default function FormIdPage() {
-  const { formDoc, sections, selectSectionField, saveUrl } = useLoaderData<typeof loader>();
+  const {
+    formDoc,
+    sections,
+    selectSectionField,
+    saveUrl
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData();
+  let submit = useSubmit();
+
+
+
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    console.log(active, over)
+    const oldIndex = formDoc.sectionOrder.findIndex(sectionId => sectionId === active.id)
+    const newIndex = formDoc.sectionOrder.findIndex(sectionId => sectionId === over.id)
+
+    if (oldIndex < 0 || newIndex < 0) {
+      return;
+    }
+
+    if (oldIndex === newIndex) {
+      return;
+    }
+    let formData = new FormData();
+    formData.append("_action", "sortList");
+    formData.append("oldIndex", oldIndex.toString());
+    formData.append("newIndex", newIndex.toString());
+
+    submit(formData, { method: "post" });
+  };
+
+
+
   return (
-    <div className="px-0 py-0 sm:py-2 sm:px-4">
-      {actionData ? <p>{JSON.stringify(actionData)}</p> : <p></p>}
-      <SectionPanel name={formDoc?.name ?? ""} text={formDoc?.text ?? ""} >
-        <StackedList>
-          {
-            formDoc?.sectionOrder.map(sectionId => {
-              const formSection = sections
-                .find(section => section.sectionId === sectionId);
+    <DndContext
+      id="sections-dnd"
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
 
+      <div className="overflow-hidden bg-white shadow sm:rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          {/* Content goes here */}
+          <div
+            className="mb-4"
+          >
+            <button
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              <ChevronLeftIcon className="w-6 h-6" />
+              Back
+            </button>
+          </div>
+          <EditOrDisplayTitle
+            _action="editBasic"
+            title={formDoc.name ?? ""}
+            text={formDoc.text ?? ""}
+            textLabel="Form Description"
+          />
+          <div
+            className="max-w-lg mb-4"
+          >
+            <SortableContext
+              items={formDoc.sectionOrder}
+              strategy={verticalListSortingStrategy}
+            >
+              <ul
+                className="grid grid-cols-1 gap-3"
+              >
+                {
+                  formDoc.sectionOrder.map(sectionId => {
+                    const section = sections.find(section => section.sectionId === sectionId)
+                    if (!section) {
+                      return <div key={sectionId} >Error</div>;
+                    }
 
-              return <SectionCard
-                key={sectionId}
-                sectionId={sectionId}
-                section={formSection} />
-            })
-          }
-        </StackedList>
+                    return <SortVerticalItem key={sectionId} id={sectionId} displayHandle={true}>
+                      <div className="col-span-4">
+                        <Link
+                          to={`/forms/sections/${section.sectionId}`}
+                          className="flex justify-start"
+                        >
+                          {section.name} <PencilSquareIcon className="inline-block ml-1 h-5 w-5 text-gray-400" aria-hidden="true" />
+                        </Link>
+                      </div>
+                      <div className="col-span-1 flex justify-end">
+                        <button
+                          className="inline-flex items-center justify-center p-1 border border-transparent rounded-full shadow-sm text-red-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          X
+                        </button>
+                      </div>
 
-        <ActionPanel field={selectSectionField} />
-      </SectionPanel>
-      <div className=" py-4 flex justify-end">
-        <Link to={saveUrl}
-          className="bg-gray-50 text-gray-900 px-4 py-2 rounded-md shadow-sm text-sm font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          Save
-        </Link>
+                    </SortVerticalItem>
+                  })
+                }
 
+              </ul>
+            </SortableContext>
+          </div>
+          <ActionPanel field={selectSectionField} />
+
+        </div>
       </div>
-
-    </div>
+    </DndContext>
   );
 }
+
+function SectionDragComponent({ section, sectionId }: { section: FormSection, sectionId: string }) {
+
+
+  return (
+
+    <li
+      className="border-2 grid grid-cols-6  rounded-md items-center justify-between px-4 py-2 bg-slate-300 sm:px-6"
+    >
+      <Squares2X2Icon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+      <div
+        className="col-span-4"
+      >
+
+        <Link
+          to={`/forms/sections/${sectionId}`}
+          className="flex justify-start"
+        >
+          {section.name} <PencilSquareIcon className="inline-block ml-1 h-5 w-5 text-gray-400" aria-hidden="true" />
+        </Link>
+      </div>
+
+      <div
+        className="col-span-1 flex justify-end"
+      >
+
+        <button
+          className="inline-flex items-center justify-center p-1 border border-transparent rounded-full shadow-sm text-red-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+        >
+          X
+        </button>
+      </div>
+    </li>
+  )
+}
+
+
+
+
+
+// <div className="px-0 py-0 sm:py-2 sm:px-4">
+//   {actionData ? <p>{JSON.stringify(actionData)}</p> : <p></p>}
+//   <SectionPanel name={formDoc?.name ?? ""} text={formDoc?.text ?? ""} >
+//     <StackedList>
+//       {
+//         formDoc?.sectionOrder.map(sectionId => {
+//           const formSection = sections
+//             .find(section => section.sectionId === sectionId);
+
+
+//           return <SectionCard
+//             key={sectionId}
+//             sectionId={sectionId}
+//             section={formSection} />
+//         })
+//       }
+//     </StackedList>
+
+//     <ActionPanel field={selectSectionField} />
+//   </SectionPanel>
+//   <div className=" py-4 flex justify-end">
+//     <Link to={saveUrl}
+//       className="bg-gray-50 text-gray-900 px-4 py-2 rounded-md shadow-sm text-sm font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+//       Save
+//     </Link>
+
+//   </div>
+
+// </div>
 
 function SectionPanel(props: { name: string, text: string, children: ReactNode }) {
 
@@ -265,8 +449,8 @@ function SectionCard(props: {
       <div className="block h-20 px-4  bg-slate-300 items-center">
         {/* <div className="px-4 py-4 sm:px-6"> */}
         <div className="flex h-full items-center justify-between">
-        <Link to={`/forms/sections/${sectionId}`}
-         className="truncate text-sm font-medium text-indigo-600">
+          <Link to={`/forms/sections/${sectionId}`}
+            className="truncate text-sm font-medium text-indigo-600">
             {section.name}
           </Link>
           <div className="w-2/4 flex items-center justify-between">
@@ -274,7 +458,7 @@ function SectionCard(props: {
               <removeSectionFetcher.Form
                 method="POST"
                 name="_action"
-               >
+              >
                 <input
                   hidden
                   name="sectionId"
@@ -282,13 +466,13 @@ function SectionCard(props: {
                   readOnly
                 />
                 <button
-                type="submit"
-                name="_action"
-                value="removeSection"
-              >
-                Remove Section
+                  type="submit"
+                  name="_action"
+                  value="removeSection"
+                >
+                  Remove Section
 
-              </button>
+                </button>
 
               </removeSectionFetcher.Form>
             </div>
@@ -329,14 +513,14 @@ function SectionCard(props: {
 
 function ActionPanel(props: { field: Field }) {
   return (
-    <div className=" sm:col-span-6 overflow-hidden bg-white shadow sm:rounded-md">
+    <div className=" max-w-lg sm:col-span-6 overflow-hidden border-2  bg-white shadow sm:rounded-md">
       <div className="px-4 py-5 sm:p-6">
         <h3 className="text-base font-semibold leading-6 text-gray-900">
           Add a Form Section
         </h3>
-        <div className="mt-2 max-w-xl text-sm text-gray-500">
+        {/* <div className="mt-2 max-w-xl text-sm text-gray-500">
           <p>Select a Section To Add</p>
-        </div>
+        </div> */}
         <Form replace method="POST" className="mt-5 sm:flex sm:items-center">
           <div className="w-full sm:max-w-xs">
             <StackedField defaultValue="" field={props.field} />

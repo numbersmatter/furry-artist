@@ -39,7 +39,7 @@ export default function AppBaseLayout() {
 
   return (
     <>
-      <div>
+      <div className='flex-1'>
         <Transition.Root show={sidebarOpen} as={Fragment}>
           <Dialog as="div" className="relative z-50 lg:hidden" onClose={setSidebarOpen}>
             <Transition.Child
@@ -120,7 +120,7 @@ export default function AppBaseLayout() {
                         </li>
                         <li>
                           <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
-                          <ul  className="-mx-2 mt-2 space-y-1">
+                          <ul className="-mx-2 mt-2 space-y-1">
                             {teams.map((team) => (
                               <li key={team.name}>
                                 <a
@@ -171,7 +171,7 @@ export default function AppBaseLayout() {
             <nav className="flex flex-1 flex-col">
               <ul className="flex flex-1 flex-col gap-y-7">
                 <li>
-                  <ul  className="-mx-2 space-y-1">
+                  <ul className="-mx-2 space-y-1">
                     {navigation.map((item) => (
                       <li key={item.name}>
                         <NavLink
@@ -233,33 +233,23 @@ export default function AppBaseLayout() {
                     action='/logout'
                   >
 
-                  <button
-                    className='flex items-center decoration-2 gap-x-1 py-3 text-lg underline underline-offset-4 font-semibold leading-6 text-gray-900 hover:bg-gray-50'
-                    name='_action'
-                    value='logout'
-                  >
-                  <ArrowLeftOnRectangleIcon className="flex-shrink-0 h-6 w-6 text-gray-400" aria-hidden="true" />
-                    Logout
-                  </button>
+                    <button
+                      className='flex items-center decoration-2 gap-x-1 py-3 text-lg underline underline-offset-4 font-semibold leading-6 text-gray-900 hover:bg-gray-50'
+                      name='_action'
+                      value='logout'
+                    >
+                      <ArrowLeftOnRectangleIcon className="flex-shrink-0 h-6 w-6 text-gray-400" aria-hidden="true" />
+                      Logout
+                    </button>
                   </Form>
-                  {/* <Link
-                    to="/site/profile"
-                    className="flex items-center gap-x-4 px-6 py-3 text-sm font-semibold leading-6 text-gray-900 hover:bg-gray-50"
-                  >
-                    <img
-                      className="h-8 w-8 rounded-full bg-gray-50"
-                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                      alt=""
-                    />
-                    <span className="sr-only">Your profile</span>
-                    <span aria-hidden="true">Tom Cook</span>
-                  </Link> */}
+                 
                 </li>
               </ul>
             </nav>
           </div>
         </div>
 
+        {/* mobile top bar */}
         <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-sm sm:px-6 lg:hidden">
           <button type="button" className="-m-2.5 p-2.5 text-gray-700 lg:hidden" onClick={() => setSidebarOpen(true)}>
             <span className="sr-only">Open sidebar</span>
@@ -268,16 +258,19 @@ export default function AppBaseLayout() {
           <div className="flex-1 text-sm font-semibold leading-6 text-gray-900">Dashboard</div>
           <Link to="/logout">
 
-                  <div
-                    className='flex items-center decoration-2 gap-x-1 py-3 text-lg underline underline-offset-4 font-semibold leading-6 text-gray-900 hover:bg-gray-50'
-                  >
-                  <ArrowLeftOnRectangleIcon className="flex-shrink-0 h-6 w-6 text-gray-600" aria-hidden="true" />
-                    Logout
-                  </div>
+            <div
+              className='flex items-center decoration-2 gap-x-1 py-3 text-lg underline underline-offset-4 font-semibold leading-6 text-gray-900 hover:bg-gray-50'
+            >
+              <ArrowLeftOnRectangleIcon className="flex-shrink-0 h-6 w-6 text-gray-600" aria-hidden="true" />
+              Logout
+            </div>
           </Link>
         </div>
-        
-        <Outlet />
+
+        {/* main content area padded when lg to display side bar */}
+        <div className="h-full w-full flex lg:pl-72 ">
+          <Outlet />
+        </div>
       </div>
     </>
   )

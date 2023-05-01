@@ -43,7 +43,7 @@ export async function loader({ params, request }: LoaderArgs) {
 export default function FormsLayOut() {
   const { userData, avatarUrl } = useLoaderData<typeof loader>();
   return (
-    <div className="h-full w-full lg:pl-72 ">
+    <div className="flex-1 ">
       <FormsHeader displayName={userData.name} />
       <Outlet />
     </div>

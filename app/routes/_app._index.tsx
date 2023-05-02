@@ -1,33 +1,124 @@
 import type { LoaderArgs, V2_MetaFunction } from "@remix-run/node";
-import { redirect } from "@remix-run/node";
-import { json } from "react-router";
+import { redirect, json } from "@remix-run/node";
 import { getUserIfSignedIn } from "~/server/auth.server";
 import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
 import { CursorArrowRaysIcon, EnvelopeOpenIcon, UsersIcon } from '@heroicons/react/24/outline'
-import { Link } from "@remix-run/react";
+import { Link, useLoaderData } from "@remix-run/react";
 import { Fragment } from 'react'
 import { Menu, Transition } from '@headlessui/react'
 import { EllipsisVerticalIcon } from '@heroicons/react/20/solid'
+import { defaultProgressTracker, getEpicProjects, StandardProject } from "~/server/database/workboard.server";
+import { baseLoader } from "~/server/user.server";
 
 
 export const meta: V2_MetaFunction = () => {
-  return [{ title: "New Remix App" }];
+  return [{ title: "Furbrush" }];
 };
 
-export const loader = async ({ request }: LoaderArgs) => {
-  const userRecord = await getUserIfSignedIn(request);
+// @ts-ignore
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ')
+}
 
-  const isSignedIn = userRecord ? true : false;
-
-  if (!isSignedIn) {
-    return redirect('/login')
+// convert category to css class
+const returnCssClass = (category: number) => {
+  if (category == 0) {
+    return "w-0"
   }
-  return json({})
+  if (category > 12) {
+    return "w-full"
+  }
+  if (category === 1) {
+    return "w-1/12"
+  }
+  if (category === 2) {
+    return "w-2/12"
+  }
+  if (category === 3) {
+    return "w-3/12"
+  }
+  if (category === 4) {
+    return "w-4/12"
+  }
+  if (category === 5) {
+    return "w-5/12"
+  }
+  if (category === 6) {
+    return "w-6/12"
+  }
+  if (category === 7) {
+    return "w-7/12"
+  }
+  if (category === 8) {
+    return "w-8/12"
+  }
+  if (category === 9) {
+    return "w-9/12"
+  }
+  if (category === 10) {
+    return "w-10/12"
+  }
+  if (category === 11) {
+    return "w-11/12"
+  }
+}
+
+export const loader = async ({ request }: LoaderArgs) => {
+  const { profileId, userRecord } = await baseLoader(request);
+  if (!userRecord) {
+    return redirect('/login');
+  };
+  if (!profileId) {
+    return redirect('/profile-setup');
+  }
+
+  //  get all non-archived projects
+  const projects = await getEpicProjects({ profileId })
+
+  // standardize the projects
+  const projectsStandardized = projects.map(project => {
+    const progressTracker = project.progressTracker ?? defaultProgressTracker;
+    const userTitle = project.userTitle ?? project.cardTitle;
+    const userNotes = project.userNotes ?? "";
+    const invoiced = project.invoiced ?? 0;
+
+    return { ...project, progressTracker, userTitle, userNotes, invoiced }
+  });
+
+  const projectsWithTaskPoints = projectsStandardized.map(project => {
+    const taskPoints = project.progressTracker.taskOrder
+      .reduce((acc, taskId) => {
+        const task = project.progressTracker.tasks[taskId];
+        return acc + task.progress;
+      }, 0);
+
+    const completedTaskIds = project.progressTracker.taskOrder
+      .filter(taskId => {
+        const task = project.progressTracker.tasks[taskId];
+        return task.complete === true;
+      });
+    const completedTaskPoints = completedTaskIds.reduce((acc, taskId) => {
+      const task = project.progressTracker.tasks[taskId];
+      return acc + task.progress;
+    }, 0);
+
+    return { ...project, taskPoints, completedTaskPoints }
+  });
+
+
+
+
+
+  return json({ projectsWithTaskPoints, profileId })
 };
 
 
 
 export default function DashboardHomepage() {
+  const { projectsWithTaskPoints } = useLoaderData<typeof loader>();
+
+  const nonCompletedProjects = projectsWithTaskPoints.filter(project => project.completedTaskPoints < project.taskPoints);
+
   return (
     <div className="flex-1">
       <header className="bg-gray-50 py-2">
@@ -35,74 +126,71 @@ export default function DashboardHomepage() {
           Dashboard
         </h1>
       </header>
-      <EpicBlock />
-      <SprintBlock />
+      <EpicBlock epicProjects={projectsWithTaskPoints} />
+      <SprintBlock sprintProjects={nonCompletedProjects} />
     </div>
   );
 };
 
-function EpicBlock() {
+
+// 
+// Start Epic Block
+// 
+// 
+function EpicBlock({ epicProjects }: { epicProjects: StandardProject[] }) {
+  const epicTaskPoints = epicProjects.reduce((acc, project) => {
+    return acc + project.taskPoints;
+  }, 0);
+
+  const completedEpicTaskPoints = epicProjects.reduce((acc, project) => {
+    return acc + project.completedTaskPoints;
+  }, 0);
+
+  const projectsNotStarted = epicProjects.filter(project => project.completedTaskPoints === 0);
+  const projectsInProgress = epicProjects.filter(project => project.completedTaskPoints > 0 && project.completedTaskPoints < project.taskPoints);
+  const projectsCompleted = epicProjects.filter(project => project.completedTaskPoints === project.taskPoints);
+
+  const projectsOverView = {
+    projectsNotStarted,
+    projectsInProgress,
+    projectsCompleted
+  }
+
+  // description of earnings
+  const totalInvoiced = epicProjects.reduce((acc, project) => {
+    return acc + project.invoiced;
+  }, 0);
+
+  const totalEarned = totalInvoiced * completedEpicTaskPoints / epicTaskPoints;
+
+
+
+
+
   return (
     <div className="overflow-hidden bg-gray-50 ">
       <div className="px-4 py-5 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <MainStatCard
             cardLabel="Revenue"
-            mainValue="$500"
+            mainValue={`$ ${totalEarned.toString()} `}
             mainValueLabel="EARNED"
-            secondaryValue="$1000"
+            secondaryValue={`$ ${totalInvoiced.toString()}`}
             secondaryValueLabel="Potential"
           />
           <MainStatCard
             cardLabel="Task Points"
-            mainValue="120"
+            mainValue={completedEpicTaskPoints.toString()}
             mainValueLabel="Points Completed"
-            secondaryValue="240"
+            secondaryValue={epicTaskPoints.toString()}
             secondaryValueLabel="Total Task Points"
           />
         </div>
-        <ProjectOverView />
+        <ProjectOverView projectsOverView={projectsOverView} />
       </div>
     </div>
   )
 };
-
-
-function ProjectOverView() {
-  return (
-    <div className="pt-3">
-      <h3 className="text-base font-semibold leading-6 text-gray-900">
-        Project Overview
-      </h3>
-      <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
-        <div className="relative overflow-hidden bg-white px-4 py-5 shadow sm:rounded-lg sm:px-6">
-          <dt className="truncate text-sm font-medium text-gray-500">
-            Projects Not Started
-          </dt>
-          <dd className="mt-1 text-3xl font-semibold text-gray-900">
-            8
-          </dd>
-        </div>
-        <div className="relative overflow-hidden bg-white px-4 py-5 shadow sm:rounded-lg sm:px-6">
-          <dt className="truncate text-sm font-medium text-gray-500">
-            Projects In Progress
-          </dt>
-          <dd className="mt-1 text-3xl font-semibold text-gray-900">
-            8
-          </dd>
-        </div>
-        <div className="relative overflow-hidden bg-white px-4 py-5 shadow sm:rounded-lg sm:px-6">
-          <dt className="truncate text-sm font-medium text-gray-500">
-            Projects Completed
-          </dt>
-          <dd className="mt-1 text-3xl font-semibold text-gray-900">
-            8
-          </dd>
-        </div>
-      </dl>
-    </div>
-  )
-}
 
 function MainStatCard(
   { cardLabel, mainValue, mainValueLabel, secondaryValue, secondaryValueLabel, }: {
@@ -142,38 +230,106 @@ function MainStatCard(
     </div>
   )
 }
-function SprintBlock() {
+
+function ProjectOverView({ projectsOverView }: { projectsOverView: { projectsNotStarted: StandardProject[], projectsInProgress: StandardProject[], projectsCompleted: StandardProject[] } }) {
+  return (
+    <div className="pt-3">
+      <h3 className="text-base font-semibold leading-6 text-gray-900">
+        Project Overview
+      </h3>
+      <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <div className="relative overflow-hidden bg-white px-4 py-5 shadow sm:rounded-lg sm:px-6">
+          <dt className="truncate text-sm font-medium text-gray-500">
+            Projects Not Started
+          </dt>
+          <dd className="mt-1 text-3xl font-semibold text-gray-900">
+            {projectsOverView.projectsNotStarted.length}
+          </dd>
+        </div>
+        <div className="relative overflow-hidden bg-white px-4 py-5 shadow sm:rounded-lg sm:px-6">
+          <dt className="truncate text-sm font-medium text-gray-500">
+            Projects In Progress
+          </dt>
+          <dd className="mt-1 text-3xl font-semibold text-gray-900">
+            {projectsOverView.projectsInProgress.length}
+          </dd>
+        </div>
+        <div className="relative overflow-hidden bg-white px-4 py-5 shadow sm:rounded-lg sm:px-6">
+          <dt className="truncate text-sm font-medium text-gray-500">
+            Projects Completed
+          </dt>
+          <dd className="mt-1 text-3xl font-semibold text-gray-900">
+            {projectsOverView.projectsCompleted.length}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
+
+
+// 
+// Start of Sprint Block
+// 
+// 
+function SprintBlock({ sprintProjects }: { sprintProjects: StandardProject[] }) {
+  const projectWithCompletionPercent = sprintProjects.map(project => {
+    return {
+      ...project,
+      completionPercent: Math.round((project.completedTaskPoints / project.taskPoints) * 100)
+    }
+  });
+
+  const projectsSortedByCompletionPercent = projectWithCompletionPercent.sort((a, b) => { return b.completionPercent - a.completionPercent });
+
+  const featuredProject = projectsSortedByCompletionPercent[0];
+
+
+
   return (
     <div className="overflow-hidden bg-gray-50 ">
       <div className="px-4 py-5 sm:p-6">
-          <div className="sm:flex-auto">
-            <h3 className="text-xl font-semibold leading-6 text-gray-900">
-              Project Spotlight!
-            </h3>
-            <p className="mt-2 text-sm text-gray-700">
-              You are almost done with this project. Keep up the good work!
-            </p>
-          </div>
+        <div className="sm:flex-auto">
+          <h3 className="text-xl font-semibold leading-6 text-gray-900">
+            Task Spotlight!
+          </h3>
+          <p className="mt-2 text-sm text-gray-700">
+            You are almost done with this project. Keep up the good work!
+          </p>
+        </div>
         <div
           className="mx-auto mt-1 max-w-md"
         >
 
 
-          <FocusedProjectCard />
+          <FocusedProjectCard project={featuredProject} />
 
         </div>
-        <ProjectListed />
+        <ProjectListed projects={sprintProjects} />
       </div>
     </div>
   )
 }
 
-function FocusedProjectCard() {
+function FocusedProjectCard({ project }: { project: StandardProject }) {
+  const completionPercent = Math.round((project.completedTaskPoints / project.taskPoints) * 100);
+
+  const tasks = project.progressTracker.taskOrder.map(taskId => {
+    const task = project.progressTracker.tasks[taskId];
+    return {
+      ...task,
+      taskId
+    }
+  });
+
+  const nextTask = tasks.find(task => task.complete === false);
+
   return (
     <div className="overflow-hidden  bg-white shadow sm:rounded-lg">
       <div className="py-2 px-1 flex flex-row justify-between ">
-        <p>Indoor Bird Watching</p>
-        <p>[80% completed]</p>
+        <p>{project.userTitle}</p>
+        <p>[ {completionPercent}% completed]</p>
       </div>
       <div className="mt-2 max-w-xl px-3 py-2  text-sm text-gray-500">
         <p>Next task</p>
@@ -190,7 +346,7 @@ function FocusedProjectCard() {
             <div className="flex flex-1 items-center justify-between truncate">
               <div className="flex-1 truncate px-4 py-2 text-sm">
                 <p className="font-medium text-gray-900 hover:text-gray-600">
-                  Linework
+                  {nextTask?.name}
                 </p>
 
               </div>
@@ -201,24 +357,27 @@ function FocusedProjectCard() {
         </ul>
       </div>
 
-      <div className="py-1">
-        <button
-          type="button"
-          className="block mx-auto rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+      <div className="py-1 flex justify-center ">
+        <Link
+          to={`/workboard/${project.workboardId}/${project.cardId}`}
+          className=" mx-auto rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
         >
           Go to Project
-        </button>      </div>
+        </Link>      </div>
     </div>
   )
 }
 
+function ProjectListed({ projects }: { projects: StandardProject[] }) {
+  const projectWithCompletionPercent = projects.map(project => {
+    return {
+      ...project,
+      completionPercent: Math.round((project.completedTaskPoints / project.taskPoints) * 100)
+    }
+  });
 
-const projectsTableList = [
-  { name: 'Lindsay Walton', type: 'Front-end Developer', Progress: 'lindsay.walton@example.com', role: 'Member' },
-  // More people...
-]
+  const projectsSortedByCompletionPercent = projectWithCompletionPercent.sort((a, b) => { return b.completionPercent - a.completionPercent });
 
-function ProjectListed() {
   return (
     <div className="px-4 py-6  sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
@@ -236,18 +395,37 @@ function ProjectListed() {
       </div>
       <div className="mt-8 flow-root">
         <div className=" overflow-x-auto hidden md:block">
-          <ProjectTable />
+          <ProjectTable projects={projects} />
         </div>
         <div className="block md:hidden" >
 
-          <ProjectStackList />
+          <ProjectStackList projects={projects} />
         </div>
       </div>
     </div>
   )
 }
 
-function ProjectTable() {
+function ProjectTable({ projects }: { projects: StandardProject[] }) {
+  const projectWithCompletionPercent = projects.map(project => {
+    return {
+      ...project,
+      completionPercent: Math.round((project.completedTaskPoints / project.taskPoints) * 100)
+    }
+  });
+
+  const projectsDividedInto12ths = projectWithCompletionPercent.map(project => {
+    return {
+      ...project,
+      category: Math.floor(project.completionPercent / 8.3)
+    }
+  });
+
+  const projectsSortedByCompletionPercent = projectsDividedInto12ths.sort((a, b) => { return b.completionPercent - a.completionPercent });
+
+
+
+
   return (
     <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
       <table className="min-w-full divide-y divide-gray-300">
@@ -286,129 +464,92 @@ function ProjectTable() {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 bg-white">
-          {projectsTableList.map((person) => (
-            <tr key={person.Progress}>
-              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
-                {person.name}
-              </td>
-              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-                  Commission
-                </span>
-              </td>
-              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                <div className="relative pt-1">
-                  <div className="w-full h-2 bg-blue-200 rounded-full">
-                    <div className="w-2/3 h-full text-center text-xs text-white bg-blue-600 rounded-full">
+          {projectsSortedByCompletionPercent.map((project) => {
+            const cssClass = returnCssClass(project.category);
+            console.log(cssClass)
+            return (
+              <tr key={project.cardId}>
+                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
+                  {project.userTitle}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                  <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                    Commission
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                  <div className="relative pt-1">
+                    <div className="w-full h-2 bg-blue-200 rounded-full">
+                      <div className={classNames(
+                        cssClass,
+                        "h-full text-center text-xs text-white bg-blue-600 rounded-full"
+                      )}>
+                      </div>
                     </div>
-                  </div>
-                </div></td>
-              <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm sm:pr-0">
-                <Link
-                  to="/"
-                  className="text-indigo-600 hover:text-indigo-900">
-                  Edit<span className="sr-only">, {person.name}</span>
-                </Link>
-              </td>
-            </tr>
-          ))}
+                  </div></td>
+                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm sm:pr-0">
+                  <Link
+                    to={`/workboard/${project.workboardId}/${project.cardId}`}
+                    className="text-indigo-600 hover:text-indigo-900">
+                    Edit<span className="sr-only">, {project.userTitle}</span>
+                  </Link>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
 }
 
+function ProjectStackList({ projects }: { projects: StandardProject[] }) {
+  const projectWithCompletionPercent = projects.map(project => {
+    return {
+      ...project,
+      completionPercent: Math.round((project.completedTaskPoints / project.taskPoints) * 100)
+    }
+  });
 
-const statuses = {
-  Complete: 'text-green-700 bg-green-50 ring-green-600/20',
-  'In progress': 'text-gray-600 bg-gray-50 ring-gray-500/10',
-  Archived: 'text-yellow-800 bg-yellow-50 ring-yellow-600/20',
-}
-const projects = [
-  {
-    id: 1,
-    name: 'GraphQL API',
-    href: '#',
-    status: 'Complete',
-    createdBy: 'Leslie Alexander',
-    dueDate: 'March 17, 2023',
-    dueDateTime: '2023-03-17T00:00Z',
-  },
-  {
-    id: 2,
-    name: 'New benefits plan',
-    href: '#',
-    status: 'In progress',
-    createdBy: 'Leslie Alexander',
-    dueDate: 'May 5, 2023',
-    dueDateTime: '2023-05-05T00:00Z',
-  },
-  {
-    id: 3,
-    name: 'Onboarding emails',
-    href: '#',
-    status: 'In progress',
-    createdBy: 'Courtney Henry',
-    dueDate: 'May 25, 2023',
-    dueDateTime: '2023-05-25T00:00Z',
-  },
-  {
-    id: 4,
-    name: 'iOS app',
-    href: '#',
-    status: 'In progress',
-    createdBy: 'Leonard Krasner',
-    dueDate: 'June 7, 2023',
-    dueDateTime: '2023-06-07T00:00Z',
-  },
-  {
-    id: 5,
-    name: 'Marketing site redesign',
-    href: '#',
-    status: 'Archived',
-    createdBy: 'Courtney Henry',
-    dueDate: 'June 10, 2023',
-    dueDateTime: '2023-06-10T00:00Z',
-  },
-]
+  const projectsSortedByCompletionPercent = projectWithCompletionPercent.sort((a, b) => { return b.completionPercent - a.completionPercent });
 
 
-function ProjectStackList() {
+
   return (
-    <ul role="list" className="divide-y divide-gray-100">
-      {projects.map((project) => (
-        <li key={project.id} className="flex items-center justify-between gap-x-6 py-5">
+    <ul className="divide-y divide-gray-100">
+      {projectsSortedByCompletionPercent.map((project) => (
+        <li key={project.cardId} className="flex items-center justify-between gap-x-6 py-5">
           <div className="min-w-0">
             <div className="flex items-start gap-x-3">
-              <p className="text-sm font-semibold leading-6 text-gray-900">{project.name}</p>
+              <p className="text-sm font-semibold leading-6 text-gray-900">{project.userTitle}</p>
               <p
                 className={classNames(
                   // @ts-ignore
-                  statuses[project.status],
+                  // statuses[project.status],
                   'rounded-md whitespace-nowrap mt-0.5 px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset'
                 )}
               >
-                {project.status}
+                Sample Status
               </p>
             </div>
             <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-gray-500">
               <p className="whitespace-nowrap">
-                Due on <time dateTime={project.dueDateTime}>{project.dueDate}</time>
+                Completion Percent {project.completionPercent}%
               </p>
               <svg viewBox="0 0 2 2" className="h-0.5 w-0.5 fill-current">
                 <circle cx={1} cy={1} r={1} />
               </svg>
-              <p className="truncate">Created by {project.createdBy}</p>
+              <p className="truncate">placeholder</p>
             </div>
           </div>
           <div className="flex flex-none items-center gap-x-4">
-            <a
-              href={project.href}
-              className="hidden rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:block"
+            <Link
+              to={`/workboard/${project.workboardId}/${project.cardId}`}
+              className=" rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:block"
             >
-              View project<span className="sr-only">, {project.name}</span>
-            </a>
-            <Menu as="div" className="relative flex-none">
+              View project<span className="sr-only">, {project.userTitle}</span>
+            </Link>
+            {/* <Menu as="div" className="relative flex-none">
               <Menu.Button className="-m-2.5 block p-2.5 text-gray-500 hover:text-gray-900">
                 <span className="sr-only">Open options</span>
                 <EllipsisVerticalIcon className="h-5 w-5" aria-hidden="true" />
@@ -464,13 +605,69 @@ function ProjectStackList() {
                   </Menu.Item>
                 </Menu.Items>
               </Transition>
-            </Menu>
+            </Menu> */}
           </div>
         </li>
       ))}
     </ul>
   )
+};
+
+const statuses = {
+  Complete: 'text-green-700 bg-green-50 ring-green-600/20',
+  'In progress': 'text-gray-600 bg-gray-50 ring-gray-500/10',
+  Archived: 'text-yellow-800 bg-yellow-50 ring-yellow-600/20',
 }
+const projects = [
+  {
+    id: 1,
+    name: 'GraphQL API',
+    href: '#',
+    status: 'Complete',
+    createdBy: 'Leslie Alexander',
+    dueDate: 'March 17, 2023',
+    dueDateTime: '2023-03-17T00:00Z',
+  },
+  {
+    id: 2,
+    name: 'New benefits plan',
+    href: '#',
+    status: 'In progress',
+    createdBy: 'Leslie Alexander',
+    dueDate: 'May 5, 2023',
+    dueDateTime: '2023-05-05T00:00Z',
+  },
+  {
+    id: 3,
+    name: 'Onboarding emails',
+    href: '#',
+    status: 'In progress',
+    createdBy: 'Courtney Henry',
+    dueDate: 'May 25, 2023',
+    dueDateTime: '2023-05-25T00:00Z',
+  },
+  {
+    id: 4,
+    name: 'iOS app',
+    href: '#',
+    status: 'In progress',
+    createdBy: 'Leonard Krasner',
+    dueDate: 'June 7, 2023',
+    dueDateTime: '2023-06-07T00:00Z',
+  },
+  {
+    id: 5,
+    name: 'Marketing site redesign',
+    href: '#',
+    status: 'Archived',
+    createdBy: 'Courtney Henry',
+    dueDate: 'June 10, 2023',
+    dueDateTime: '2023-06-10T00:00Z',
+  },
+]
+
+
+
 
 
 
@@ -481,10 +678,7 @@ const stats = [
   { id: 3, name: 'Active in Workboard', stat: '8', icon: CursorArrowRaysIcon, change: '3.2%', changeType: 'decrease' },
 ]
 
-// @ts-ignore
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ')
-}
+
 
 function StatsList() {
   return (

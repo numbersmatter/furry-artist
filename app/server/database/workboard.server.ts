@@ -33,11 +33,33 @@ export interface CardDetails {
   archived: boolean;
   userTitle?: string;
   userNotes?: string;
-  progressTracker?: ProgressTracker; 
+  progressTracker?: ProgressTracker;
+  invoiced?: number; 
 }
+
+export interface StandardProject  {
+  cardId: string;
+  cardTitle: string;
+  cardType: string;
+  workboardId: string;
+  archived: boolean;
+  userTitle: string;
+  userNotes: string;
+  progressTracker: ProgressTracker; 
+  taskPoints: number;
+  completedTaskPoints: number;
+  invoiced: number;
+}
+
+
 
 export interface CardDetailsWID extends CardDetails {
   cardId: string;
+}
+
+export const defaultProgressTracker: ProgressTracker = {
+  tasks: {},
+  taskOrder: []
 }
 
 export interface WorkboardDoc {
@@ -56,6 +78,19 @@ const workboardDb = {
   cards: (profileId: string) =>
     dataPoint<CardDetails>(`${dbBase}/profiles/${profileId}/cards`),
 };
+
+export const getEpicProjects = async ({
+  profileId,
+}: {
+  profileId: string;
+}) => {
+  const cardsRef = workboardDb.cards(profileId).where("archived", "==", false);
+  const cardsSnap = await cardsRef.get();
+  const cards = cardsSnap.docs.map((doc) => ({...doc.data(), cardId: doc.id}));
+  return cards;
+};
+
+
 
 export const getCardById = async ({
   profileId,

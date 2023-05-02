@@ -21,7 +21,7 @@ import {
 import { Outlet } from '@remix-run/react'
 
 const navigation = [
-  { name: 'Dashboard', href: '#', icon: HomeIcon, current: true },
+  { name: 'Dashboard', href: '/', icon: HomeIcon, current: true },
   { name: 'Forms', href: '/forms', icon: ClipboardDocumentIcon, current: false },
   { name: 'Requests', href: '/submissions', icon: InboxIcon, current: false },
   { name: 'Workboard', href: '/workboard', icon: BriefcaseIcon, current: false },
@@ -102,9 +102,9 @@ export default function AppBaseLayout() {
                       />
                     </div>
                     <nav className="flex flex-1 flex-col">
-                      <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                      <ul  className="flex flex-1 flex-col gap-y-7">
                         <li>
-                          <ul role="list" className="-mx-2 space-y-1">
+                          <ul  className="-mx-2 space-y-1">
                             {navigation.map((item) => (
                               <li key={item.name}>
                                 <a
@@ -131,7 +131,7 @@ export default function AppBaseLayout() {
                         </li>
                         <li>
                           <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
-                          <ul role="list" className="-mx-2 mt-2 space-y-1">
+                          <ul className="-mx-2 mt-2 space-y-1">
                             {teams.map((team) => (
                               <li key={team.name}>
                                 <a

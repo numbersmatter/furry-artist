@@ -35,10 +35,12 @@ export function SortVerticalItem(props: {
       <div
         className={displayClass}
       >
-        <li
-          className="border-2 grid grid-cols-6  rounded-md items-center justify-between px-4 py-2 bg-slate-300 sm:px-6"
+        <div
+          className="border-2 grid grid-cols-6  rounded-md items-center justify-between py-2 bg-slate-300"
         >
-          <div hidden={!props.displayHandle}>
+          <div hidden={!props.displayHandle}
+           className=" px-1 col-span-1 flex flex-row justify-start"
+          >
             <Squares2X2Icon
               className='h-5 w-5 text-gray-400'
               {...attributes}
@@ -46,7 +48,7 @@ export function SortVerticalItem(props: {
             />
           </div>
           { props.children}
-        </li>
+        </div>
       </div>
     </div>
   );

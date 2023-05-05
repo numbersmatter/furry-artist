@@ -327,12 +327,14 @@ function FocusedProjectCard({ project }: { project: StandardProject }) {
 
   return (
     <div className="overflow-hidden  bg-white shadow sm:rounded-lg">
-      <div className="py-2 px-1 flex flex-row justify-between ">
-        <p>{project.userTitle}</p>
-        <p>[ {completionPercent}% completed]</p>
+      <div className="py-2 px-2 flex flex-row justify-between bg-orange-200">
+        <p className="text-lg font-semibold text-slate-900">{project.userTitle}</p>
+        <p
+          className="text-lg font-semibold text-slate-900"
+        >[ {completionPercent}% completed]</p>
       </div>
-      <div className="mt-2 max-w-xl px-3 py-2  text-sm text-gray-500">
-        <p>Next task</p>
+      <div className="mt-2 max-w-xl px-3 py-2  text-sm text-gray-600">
+        <p className="text-base" >Next task</p>
         <ul>
           <li className=" flex rounded-md shadow-sm bg-green-500" >
 
@@ -344,14 +346,17 @@ function FocusedProjectCard({ project }: { project: StandardProject }) {
 
             </div>
             <div className="flex flex-1 items-center justify-between truncate">
-              <div className="flex-1 truncate px-4 py-2 text-sm">
-                <p className="font-medium text-gray-900 hover:text-gray-600">
+              <div className="flex flex-row content-end truncate px-4 py-1 text-sm">
+                <p className="font-semibold text-base text-slate-50 hover:text-gray-600">
                   {nextTask?.name}
+                </p>
+                <p className="pl-2 pt-1 text-slate-100">
+                 Adds {nextTask?.progress} points! 
                 </p>
 
               </div>
-              <div className="flex-shrink-0 pr-2">
-              </div>
+              {/* <div className="flex-shrink-0 pr-2">
+              </div> */}
             </div>
           </li>
         </ul>
@@ -442,7 +447,7 @@ function ProjectTable({ projects }: { projects: StandardProject[] }) {
             <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
               <button className="group inline-flex">
                 Type
-                <span className="ml-2 flex-none rounded bg-gray-100 text-gray-900 group-hover:bg-gray-200">
+                <span className=" invisible ml-2 flex-none rounded bg-gray-100 text-gray-900 group-hover:bg-gray-200">
                   <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
                 </span>
               </button>
@@ -466,14 +471,13 @@ function ProjectTable({ projects }: { projects: StandardProject[] }) {
         <tbody className="divide-y divide-gray-200 bg-white">
           {projectsSortedByCompletionPercent.map((project) => {
             const cssClass = returnCssClass(project.category);
-            console.log(cssClass)
             return (
-              <tr key={project.cardId}>
-                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
+              <tr key={project.cardId} className="">
+                <td className="whitespace-nowrap px-2 py-4 pl-4 pr-3 text-sm font-medium text-gray-900 ">
                   {project.userTitle}
                 </td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                  <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                  <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/10">
                     Commission
                   </span>
                 </td>
@@ -487,7 +491,7 @@ function ProjectTable({ projects }: { projects: StandardProject[] }) {
                       </div>
                     </div>
                   </div></td>
-                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm sm:pr-0">
+                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm ">
                   <Link
                     to={`/workboard/${project.workboardId}/${project.cardId}`}
                     className="text-indigo-600 hover:text-indigo-900">

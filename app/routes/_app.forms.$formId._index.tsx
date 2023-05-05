@@ -260,24 +260,26 @@ export default function FormIdPage() {
                       return <div key={sectionId} >Error</div>;
                     }
 
-                    return <SortVerticalItem key={sectionId} id={sectionId} displayHandle={true}>
-                      <div className="col-span-4">
+                    return <li key={sectionId}>
+                      <SortVerticalItem key={sectionId} id={sectionId} displayHandle={true}>
+                      <div className="col-span-4 flex flex-row justify-start">
                         <Link
                           to={`/forms/sections/${section.sectionId}`}
-                          className="flex justify-start"
-                        >
+                          className=""
+                          >
                           {section.name} <PencilSquareIcon className="inline-block ml-1 h-5 w-5 text-gray-400" aria-hidden="true" />
                         </Link>
                       </div>
-                      <div className="col-span-1 flex justify-end">
+                      <div className="pr-1 col-span-1 flex justify-end">
                         <button
                           className="inline-flex items-center justify-center p-1 border border-transparent rounded-full shadow-sm text-red-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
+                          >
                           X
                         </button>
                       </div>
 
                     </SortVerticalItem>
+                          </li>
                   })
                 }
 

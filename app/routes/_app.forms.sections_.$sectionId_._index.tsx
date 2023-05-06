@@ -8,7 +8,7 @@ import { getUserDoc } from "~/server/database/db.server";
 import { addField, getFormSectionById, moveArrayElement, updateSectionDoc } from "~/server/database/forms.server";
 import type { Field } from "~/ui/StackedFields/StackFields";
 import * as z from "zod";
-import { ChevronLeftIcon, PencilIcon } from "@heroicons/react/20/solid";
+import { ChevronLeftIcon, PencilIcon, Squares2X2Icon } from "@heroicons/react/20/solid";
 import EditOrDisplayTitle from "~/ui/SmartComponents/EditOrDisplayBasicInfo";
 import { SortVerticalItem } from "~/ui/SmartComponents/SortVerticalItem";
 import {
@@ -118,7 +118,7 @@ export async function action({ params, request }: ActionArgs) {
       return json({ success: true })
     }
   }
-  const currentFieldOrder = [ ...fieldOrder];
+  const currentFieldOrder = [...fieldOrder];
 
   if (_action === "sortList") {
     const SortListSchema = z.object({
@@ -142,7 +142,7 @@ export async function action({ params, request }: ActionArgs) {
       updateData: { fieldOrder: newFieldOrder }
     })
     return json({ success: true })
-}
+  }
   return json({});
 
 }
@@ -176,13 +176,13 @@ export default function EditFormSection() {
   const { formSectionDoc, sectionFields, saveUrl } = useLoaderData<typeof loader>();
   const actionData = useActionData();
   const [activeFieldId, setActiveFieldId] = useState<string>("");
-  let submit= useSubmit();
+  let submit = useSubmit();
 
   const activeField = formSectionDoc.fieldData[activeFieldId] ??
   {
     fieldId: "error",
     label: "error",
-    type:"shortText"
+    type: "shortText"
   }
 
   const fields = formSectionDoc.fieldOrder.map((fieldId) => {
@@ -218,7 +218,7 @@ export default function EditFormSection() {
     submit(formData, { method: "post", });
   };
 
-  const handleDragStart = (event:any) =>{
+  const handleDragStart = (event: any) => {
     const { active, over } = event;
 
     setActiveFieldId(active.id)
@@ -229,86 +229,109 @@ export default function EditFormSection() {
 
   return (
     <DndContext
-    id="fieldsDropZone"
-    sensors={sensors}
-    collisionDetection={closestCenter}
-    onDragEnd={handleDragEnd}
-    onDragStart={handleDragStart}
-  >
+      id="fieldsDropZone"
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      onDragStart={handleDragStart}
+    >
 
-    <div className="overflow-hidden bg-white shadow">
-      <div className="px-4 py-5 sm:p-6">
+      <div className="overflow-hidden bg-white shadow">
+        <div className="px-4 py-5 sm:p-6">
 
-        {/* Nav Back button */}
-        <div
-          className="mb-4"
-        >
-          <button
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          {/* Nav Back button */}
+          <div
+            className="mb-4"
           >
-            <ChevronLeftIcon className="w-6 h-6" />
-            Back
-          </button>
-        </div>
+            <button
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              <ChevronLeftIcon className="w-6 h-6" />
+              Back
+            </button>
+          </div>
 
-        {/* Edit or display Title */}
-        <EditOrDisplayTitle
-          title={formSectionDoc.name}
-          text={formSectionDoc.text}
-          textLabel={"Section Description"}
-          _action="editTitleText"
-        />
-        {/* list of fields */}
-        <div className="max-w-lg mb-4">
-          <SortableContext
-            items={formSectionDoc.fieldOrder}
-            strategy={verticalListSortingStrategy}
-          >
+          {/* Edit or display Title */}
+          <EditOrDisplayTitle
+            title={formSectionDoc.name}
+            text={formSectionDoc.text}
+            textLabel={"Section Description"}
+            _action="editTitleText"
+          />
+          {/* list of fields */}
+          <div className="max-w-lg mb-4">
+            <SortableContext
+              items={formSectionDoc.fieldOrder}
+              strategy={verticalListSortingStrategy}
+            >
 
-            <ul className=" gap-y-2">
-              {
-                formSectionDoc.fieldOrder.map(fieldId => {
-                  const defaultField = {
-                    fieldId: fieldId,
-                    label: "Error",
-                    type: "shortText"
-                  }
+              <ul className=" gap-y-2">
+                {
+                  formSectionDoc.fieldOrder.map(fieldId => {
+                    const defaultField = {
+                      fieldId: fieldId,
+                      label: "Error",
+                      type: "shortText"
+                    }
 
-                  const field = formSectionDoc.fieldData[fieldId] ??
-                    defaultField
+                    const field = formSectionDoc.fieldData[fieldId] ??
+                      defaultField
 
-                  return (
-                    <li
-                      key={fieldId}
-                      className="py-1"
-                    >
-                      <SortVerticalItem
-                        id={fieldId}
-                        displayHandle
+                    return (
+                      <li
+                        key={fieldId}
+                        className="py-1"
                       >
-                        <FieldDndBox field={field} />
-                      </SortVerticalItem>
-                    </li>
-                  )
-                })
-              }
-            </ul>
-          </SortableContext>
+                        <SortVerticalItem
+                          id={fieldId}
+                          displayHandle
+                        >
+                          <FieldDndBox field={field} />
+                        </SortVerticalItem>
+                      </li>
+                    )
+                  })
+                }
+              </ul>
+            </SortableContext>
+          </div>
+          {/* Add new field to section */}
+          <AddField />
         </div>
-        {/* Add new field to section */}
-        <AddField />
+        <DragOverlay >
+          {
+            activeFieldId ? (
+              <OverlayStyle >
+
+                <FieldDndBox field={activeField} />
+              </OverlayStyle>
+
+            )
+              : null
+          }
+        </DragOverlay>
       </div>
-      <DragOverlay >
-        {
-          activeFieldId ?(
-            <FieldDndBox field={activeField}/>
-          )
-          : null
-        }
-      </DragOverlay>
-    </div>
     </DndContext>
   );
+}
+
+function OverlayStyle(props: {
+  
+  children: React.ReactNode,}){
+  return (
+      <div
+        className="border-2 grid grid-cols-12  rounded-md items-center justify-between py-2 bg-slate-300"
+      >
+        <div
+         className=" px-1 col-span-1 flex flex-row justify-start"
+        >
+          <Squares2X2Icon
+            className='h-5 w-5 text-gray-400'
+          />
+        </div>
+        { props.children}
+      </div>
+);
 }
 
 function FieldDndBox({ field }: { field: Field }) {
@@ -316,7 +339,7 @@ function FieldDndBox({ field }: { field: Field }) {
   const options = field.options ?? [];
   return (
     <>
-      <div className="col-span-5 flex flex-row justify-between">
+      <div className="col-span-11 flex flex-row justify-between">
         <p className=" font-semibold text-lg">{field.label}</p>
         <p className=" font-bold">{field.type}</p>
         <p className="pr-2">Edit</p>
@@ -325,10 +348,10 @@ function FieldDndBox({ field }: { field: Field }) {
         field.type === "select"
           ?
           <>
-            <div className="col-span-2 pt-1 flex flex-row justify-center align-top">
+            <div className="col-span-4 pt-1 flex flex-row justify-center align-top">
               <p className="font-medium underline decoration-2" >Options</p>
             </div>
-            <div className="col-span-4 pt-2">
+            <div className="col-span-8 pt-2">
               <ul className="list-disc">
                 {
                   options.map((option) =>

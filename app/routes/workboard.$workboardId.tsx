@@ -101,22 +101,15 @@ export async function loader({ params, request }: LoaderArgs) {
     workboardId: params.workboardId as string,
   });
 
-  const clientFirebaseConfig = {
-    apiKey: "AIzaSyDxlpL1dwd5Nh3x2QG_1M3YCelQJqsDzA8",
-    authDomain: "furry-artist.firebaseapp.com",
-    projectId: "furry-artist",
-    storageBucket: "furry-artist.appspot.com",
-    messagingSenderId: "1001670878711",
-    appId: "1:1001670878711:web:6adb5ff46dd36e4210faf2"
-  };
+  
 
 
-  return json({ workboardDoc, boardCards, clientFirebaseConfig });
+  return json({ workboardDoc, boardCards, });
 }
 
 
 export default function WorkboardTemplate() {
-  const { workboardDoc, boardCards, clientFirebaseConfig } = useLoaderData<typeof loader>();
+  const { workboardDoc, boardCards, } = useLoaderData<typeof loader>();
   const [isActiveId, setIsActiveId] = useState<string | null>(null);
   const [openCard, setOpenCard] = useState(false);
   const [openCardId, setOpenCardId] = useState<string | null>(null);

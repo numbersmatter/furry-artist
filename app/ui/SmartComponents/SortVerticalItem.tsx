@@ -36,7 +36,7 @@ export function SortVerticalItem(props: {
         className={displayClass}
       >
         <div
-          className="border-2 grid grid-cols-6  rounded-md items-center justify-between py-2 bg-slate-300"
+          className="border-2 grid grid-cols-12  rounded-md items-center justify-between py-2 bg-slate-300"
         >
           <div hidden={!props.displayHandle}
            className=" px-1 col-span-1 flex flex-row justify-start"

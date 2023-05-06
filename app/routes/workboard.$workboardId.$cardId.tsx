@@ -1,5 +1,5 @@
 import { Dialog, Switch } from "@headlessui/react";
-import { ChevronLeftIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
+import { ChevronLeftIcon, PencilSquareIcon, Squares2X2Icon } from "@heroicons/react/20/solid";
 import { ActionArgs, LoaderArgs, Response } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
@@ -9,7 +9,8 @@ import { getOpeningById, SectionData } from "~/server/database/openings.server";
 import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
 import { addSubmissionToWorkboard, getCardById, ProgressTracker, Task, TaskWID, updateCard } from "~/server/database/workboard.server";
 import { baseLoader } from "~/server/user.server";
-import { Field } from "~/ui/StackedFields/StackFields";
+import SelectField from "~/ui/StackedFields/SelectField";
+import StackedField, { Field } from "~/ui/StackedFields/StackFields";
 import TextAreaField from "~/ui/StackedFields/TextArea";
 import TextField from "~/ui/StackedFields/TextField";
 
@@ -184,7 +185,7 @@ export default function CardDetailsPage() {
             <Dialog.Title className="px-4 pt-4 text-3xl font-medium text-gray-900"
             >
               <button
-                onClick={() => { navigate("/workboard/") }}
+                onClick={() => { navigate(-1) }}
                 className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 <ChevronLeftIcon className="w-6 h-6" />
@@ -238,18 +239,15 @@ export default function CardDetailsPage() {
             <>
               <div className="overflow-hidden bg-white shadow sm:rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
-                  <EditOrDisplayTitle 
+                  <EditOrDisplayTitle
                     title={cardDetails.userTitle ?? cardDetails.cardTitle}
                     text={cardDetails.userNotes ?? ""}
                   />
-                  {/* {
-                    isEditing ?
-                      <TitleNotesForm changeEdit={changeEdit} title={cardDetails.userTitle ?? cardDetails.cardTitle} text={cardDetails.userNotes ?? ""} />
-                      : <TitleNotesDisplay changeEdit={changeEdit} title={cardDetails.userTitle ?? cardDetails.cardTitle} text={cardDetails.userNotes ?? ""} />
-                  } */}
+
                   {
                     tasklist.length > 0
-                      ? <ProgressTaskList tasklist={tasklist} />
+                      ? <> <ProgressTaskList tasklist={tasklist} />
+                        <EditTaskList tasklist={tasklist} />  </>
                       : <AddDefaultProgressList cardId={cardDetails.cardId} />
                   }
                 </div>
@@ -299,6 +297,186 @@ export default function CardDetailsPage() {
   );
 }
 
+function EditTaskList({ tasklist }: { tasklist: TaskWID[] }) {
+
+  return (
+    <div>
+      <h5>Edit Task List</h5>
+      <ul>
+        <li>
+          <OverlayStyle>
+            <TaskListItem />
+          </OverlayStyle>
+        </li>
+        <li>
+          <OverlayStyle>
+            <TaskListItem />
+          </OverlayStyle>
+        </li>
+      </ul>
+      <EditTask />
+    </div>
+  )
+}
+
+function EditTask() {
+  const taskType: Field = {
+    fieldId: "taskType",
+    label: "Type",
+    type: "select",
+    options: [
+      { label: "Sketch Intial", value: "SketchIntial" },
+      { label: "Sketch Detailed", value: "SketchDetailed" },
+    ],
+
+  }
+  const taskPoints: Field = {
+    fieldId: "taskPoints",
+    label: "Task Points",
+    type: "select",
+    options: [
+      { label: "10 Points", value: "10" },
+      { label: "20 Points", value: "20" },
+      { label: "30 Points", value: "30" },
+      { label: "50 Points", value: "50" },
+      { label: "80 Points", value: "80" },
+    ],
+  }
+
+  const typeOptions = taskType.options ?? [];
+  const pointOptions = taskPoints.options ?? [];
+
+  // @ts-ignore
+  const taskDefault = "SketchIntial";
+
+  return (
+    <div className="bg-white shadow sm:rounded-lg">
+      <div className="px-4 py-5 sm:p-6">
+        <h3 className="text-base font-semibold leading-6 text-gray-900">
+          Update Task
+        </h3>
+        <div className="mt-2 max-w-xl text-sm text-gray-500">
+          <p>Change task type, point value, or label. </p>
+        </div>
+        <form className="mt-5 sm:flex sm:items-center">
+          <div className="w-full sm:max-w-xs">
+            <label htmlFor="taskType" className="sr-only">
+              Task Type
+            </label>
+            <select
+              name="taskType"
+              id="taskType"
+              className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            >
+              {
+                typeOptions.map((option)=>
+                <option key={option.value} value={option.value}>{option.label}</option>
+                )
+              }
+
+            </select>
+          </div>
+          <div className="w-full sm:max-w-xs">
+            <label htmlFor="taskPoints" className="sr-only">
+              Task Points
+            </label>
+            <select
+              name="taskPoints"
+              id="taskPoints"
+              className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            >
+              {
+                pointOptions.map((option)=>
+                <option key={option.value} value={option.value}>{option.label}</option>
+                )
+              }
+
+            </select>
+          </div>
+          <div className="w-full sm:max-w-xs">
+            <label htmlFor="taskTitle" className="sr-only">
+              Title
+            </label>
+            <input
+              name="taskTitle"
+              id="taskTitle"
+              type="text"
+              placeholder="Optional Title"
+              className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            />
+          </div>
+          <button
+            type="submit"
+            className="mt-3 inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:ml-3 sm:mt-0 sm:w-auto"
+          >
+            Save
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function TaskListItem() {
+
+  return (
+    <>
+      <div className="col-span-11 flex flex-row justify-between">
+        <p className=" font-semibold text-lg">Intial Sketch</p>
+        <p className="text-base text-ellipsis"> TaskTitle but this is a really long title</p>
+        <p>50 points </p>
+        <p className="pr-2">Edit</p>
+      </div>
+      {/* {
+        field.type === "select"
+          ?
+          <>
+            <div className="col-span-2 pt-1 flex flex-row justify-center align-top">
+              <p className="font-medium underline decoration-2" >Options</p>
+            </div>
+            <div className="col-span-4 pt-2">
+              <ul className="list-disc">
+                {
+                  options.map((option) =>
+                    <li key={option.value}>
+                      {option.label}
+                    </li>
+                  )
+                }
+              </ul>
+            </div>
+          </>
+          : null
+      } */}
+
+    </>
+  )
+}
+
+function OverlayStyle(props: {
+
+  children: React.ReactNode,
+}) {
+  return (
+    <div
+      className="border-2 grid grid-cols-12  rounded-md items-center justify-between py-2 bg-slate-300"
+    >
+      <div
+        className=" px-1 col-span-1 flex flex-row justify-start"
+      >
+        <Squares2X2Icon
+          className='h-5 w-5 text-gray-400'
+        />
+      </div>
+      {props.children}
+    </div>
+  );
+}
+
+
+
+
+
 function EditOrDisplayTitle(
   { title, text, }: { title: string, text: string, }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -314,27 +492,27 @@ function EditOrDisplayTitle(
         ? "error"
         : "idle"
 
-  const displayTitle = fetcher.formData?.get("userTitle") 
-  ? fetcher.formData.get("userTitle") as string
-  :title;
+  const displayTitle = fetcher.formData?.get("userTitle")
+    ? fetcher.formData.get("userTitle") as string
+    : title;
 
   const displayText = fetcher.formData?.get("userNotes")
-  ? fetcher.formData.get("userNotes") as string
-  : text;
+    ? fetcher.formData.get("userNotes") as string
+    : text;
 
-  
-  useEffect(()=>{
-    if(userState === "success"){
+
+  useEffect(() => {
+    if (userState === "success") {
       setIsEditing(false)
     }
-  },[userState])
-  
+  }, [userState])
+
 
 
   return (
     <>
       <fetcher.Form
-        method="post" 
+        method="post"
         hidden={!isEditing}
       >
         <TitleNotesForm changeEdit={changeEdit} title={title} text={text} />
@@ -534,7 +712,7 @@ function TaskItem({ task, totalSize }: { task: TaskWID, totalSize: number }) {
   formData.append("_action", "toggleTask")
   formData.append("complete", task.complete ? "false" : "true");
 
-  
+
 
   const handleClick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.currentTarget.checked;

@@ -5,10 +5,12 @@ import { json, redirect } from "@remix-run/node";
 import { Form, Link, useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { moveArrayElement } from "~/server/database/forms.server";
 import { getOpeningById, SectionData } from "~/server/database/openings.server";
 import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
 import { addSubmissionToWorkboard, getCardById, ProgressTracker, Task, TaskWID, updateCard } from "~/server/database/workboard.server";
 import { baseLoader } from "~/server/user.server";
+import EditTaskOrder from "~/ui/SmartComponents/TaskEditDND";
 import SelectField from "~/ui/StackedFields/SelectField";
 import StackedField, { Field } from "~/ui/StackedFields/StackFields";
 import TextAreaField from "~/ui/StackedFields/TextArea";
@@ -105,6 +107,43 @@ export async function action({ params, request }: ActionArgs) {
 
     return json({ status: 200 });
   }
+
+  if (_action === "sortList") {
+    const SortListSchema = z.object({
+      oldIndex: z.coerce.number(),
+      newIndex: z.coerce.number(),
+    })
+    const schemaCheck = SortListSchema.safeParse(values);
+    if (!schemaCheck.success) {
+      return { error: true, errorData: schemaCheck.error.issues }
+    }
+    const progressTracker =  {
+      taskOrder:cardDetails.progressTracker?.taskOrder ?? [],
+      tasks:cardDetails.progressTracker?.tasks ?? {},
+    }
+
+    const currentTaskOrder = cardDetails.progressTracker?.taskOrder ?? [];
+
+    if(currentTaskOrder.length < 2){
+      return json({status:404})
+    }
+
+    const newTaskOrder = moveArrayElement(
+      currentTaskOrder,
+      schemaCheck.data.oldIndex,
+      schemaCheck.data.newIndex
+    );
+
+    const newProgressTracker = { ...progressTracker, taskOrder: newTaskOrder}
+
+    await updateCard({
+      profileId,
+      cardId: params.cardId as string,
+      cardDetails: { progressTracker: newProgressTracker }
+    })
+    return json({ success: true })
+  }
+
 
 
 
@@ -247,7 +286,7 @@ export default function CardDetailsPage() {
                   {
                     tasklist.length > 0
                       ? <> <ProgressTaskList tasklist={tasklist} />
-                        <EditTaskList tasklist={tasklist} />  </>
+                      <EditTaskOrder tasklist={tasklist} />  </>
                       : <AddDefaultProgressList cardId={cardDetails.cardId} />
                   }
                 </div>
@@ -299,20 +338,21 @@ export default function CardDetailsPage() {
 
 function EditTaskList({ tasklist }: { tasklist: TaskWID[] }) {
 
+
   return (
     <div>
       <h5>Edit Task List</h5>
       <ul>
-        <li>
-          <OverlayStyle>
-            <TaskListItem />
-          </OverlayStyle>
-        </li>
-        <li>
-          <OverlayStyle>
-            <TaskListItem />
-          </OverlayStyle>
-        </li>
+        {
+          tasklist.map((task) =>
+
+            <li key={task.taskId}>
+              <OverlayStyle>
+                <TaskListItem task={task}/>
+              </OverlayStyle>
+            </li>
+          )
+        }
       </ul>
       <EditTask />
     </div>
@@ -369,8 +409,8 @@ function EditTask() {
               className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             >
               {
-                typeOptions.map((option)=>
-                <option key={option.value} value={option.value}>{option.label}</option>
+                typeOptions.map((option) =>
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 )
               }
 
@@ -386,8 +426,8 @@ function EditTask() {
               className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             >
               {
-                pointOptions.map((option)=>
-                <option key={option.value} value={option.value}>{option.label}</option>
+                pointOptions.map((option) =>
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 )
               }
 
@@ -417,14 +457,14 @@ function EditTask() {
   )
 }
 
-function TaskListItem() {
+function TaskListItem({task}: {task:TaskWID}) {
 
   return (
     <>
       <div className="col-span-11 flex flex-row justify-between">
-        <p className=" font-semibold text-lg">Intial Sketch</p>
-        <p className="text-base text-ellipsis"> TaskTitle but this is a really long title</p>
-        <p>50 points </p>
+        <p className="pr-1 font-semibold text-lg ">{task.name}</p>
+        <p className="text-base truncate"> TaskTitle but this is a really long title</p>
+        <p>{task.progress} points </p>
         <p className="pr-2">Edit</p>
       </div>
       {/* {
@@ -473,6 +513,23 @@ function OverlayStyle(props: {
   );
 }
 
+function EditOrDisplayTaskList() {
+  const [isEditing, setIsEditing] = useState(false);
+  const changeEdit = () => setIsEditing(!isEditing)
+  const fetcher = useFetcher();
+
+  let userState: "idle" | "success" | "error" | "submitting" = fetcher
+    .state === "submitting"
+    ? "submitting"
+    : fetcher.data?.success
+      ? "success"
+      : fetcher.data?.error
+        ? "error"
+        : "idle"
+
+
+
+}
 
 
 

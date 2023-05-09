@@ -3,13 +3,15 @@ import { ChevronLeftIcon, PencilSquareIcon, Squares2X2Icon } from "@heroicons/re
 import { ActionArgs, LoaderArgs, Response } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { z } from "zod";
+import { getUUID } from "~/server/database/db.server";
 import { moveArrayElement } from "~/server/database/forms.server";
 import { getOpeningById, SectionData } from "~/server/database/openings.server";
 import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
 import { addSubmissionToWorkboard, getCardById, ProgressTracker, Task, TaskWID, updateCard } from "~/server/database/workboard.server";
 import { baseLoader } from "~/server/user.server";
+import TaskCheckboxDnd from "~/ui/SmartComponents/TaskCheckboxDnd";
 import EditTaskOrder from "~/ui/SmartComponents/TaskEditDND";
 import SelectField from "~/ui/StackedFields/SelectField";
 import StackedField, { Field } from "~/ui/StackedFields/StackFields";
@@ -143,6 +145,49 @@ export async function action({ params, request }: ActionArgs) {
     })
     return json({ success: true })
   }
+  
+  if( _action ==="addTask"){
+    const addTaskScheme = z.object({
+      taskTitle: z.string(),
+      taskType: z.string(),
+      taskPoints: z.coerce.number(),
+    })
+
+    const schemaCheck = addTaskScheme.safeParse(values);
+
+    if(!schemaCheck.success){
+      return json({error: true, issues:schemaCheck.error.issues})
+    }
+
+
+    const newTaskId = getUUID()
+
+    const taskOrder = cardDetails.progressTracker?.taskOrder ?? [];
+    const tasks = cardDetails.progressTracker?.tasks ?? {};
+    
+    const newTaskOrder = [...taskOrder, newTaskId];
+    const newTasks = { 
+      ...tasks, 
+      [newTaskId]: { 
+        complete: false, 
+        name: schemaCheck.data.taskTitle ,
+        progress: schemaCheck.data.taskPoints
+       }
+      }
+    
+    const newProgressTracker = {
+      taskOrder: newTaskOrder,
+      tasks: newTasks,
+    };
+    
+    await updateCard({
+      profileId,
+      cardId: params.cardId as string,
+      cardDetails: { progressTracker: newProgressTracker }
+    })
+    
+    return json({ success: true })
+  }
 
 
 
@@ -184,25 +229,25 @@ export async function loader({ params, request }: LoaderArgs) {
   const tasklist = progressTracker.taskOrder.map((taskId) => ({ ...progressTracker.tasks[taskId], taskId: taskId }));
 
   const taskPointOptions = [
-    { label: "10 Points", value:"10"},
-    { label: "20 Points", value:"20"},
-    { label: "30 Points", value:"30"},
-    { label: "50 Points", value:"50"},
-    { label: "80 Points", value:"80"},
-    { label: "130 Points", value:"130"},
+    { label: "10 Points", value: "10" },
+    { label: "20 Points", value: "20" },
+    { label: "30 Points", value: "30" },
+    { label: "50 Points", value: "50" },
+    { label: "80 Points", value: "80" },
+    { label: "130 Points", value: "130" },
   ];
   const taskTypeOptions = [
-    { label: "Intial Sketch", value:"IS"},
-    { label: "Detailed Sketch", value:"DS"},
-    { label: "Linework", value:"LW"},
-    { label: "Coloring", value:"CR"},
-    { label: "Lighting & Effects", value:"LE"},
+    { label: "Intial Sketch", value: "IS" },
+    { label: "Detailed Sketch", value: "DS" },
+    { label: "Linework", value: "LW" },
+    { label: "Coloring", value: "CR" },
+    { label: "Lighting & Effects", value: "LE" },
   ];
 
   const addTaskFields: Field[] = [
-    {fieldId: "taskTitle", type: "shortText", label:"Task Title"},
-    {fieldId: "taskType", type: "select", label:"Task Type", options: taskTypeOptions},
-    {fieldId: "taskPoints", type: "select", label:"Task Points", options: taskPointOptions},
+    { fieldId: "taskTitle", type: "shortText", label: "Task Title" },
+    { fieldId: "taskType", type: "select", label: "Task Type", options: taskTypeOptions },
+    { fieldId: "taskPoints", type: "select", label: "Task Points", options: taskPointOptions },
   ]
 
 
@@ -307,11 +352,11 @@ export default function CardDetailsPage() {
 
                   {
                     tasklist.length > 0
-                      ? <> <ProgressTaskList tasklist={tasklist} />
-                        <EditTaskOrder tasklist={tasklist} />  </>
+                      ? <> 
+                        <TaskCheckboxDnd tasklist={tasklist} />  </>
                       : <AddDefaultProgressList cardId={cardDetails.cardId} />
                   }
-                  <div>
+                  {/* <div>
                     <h3> Progress 70%</h3>
                     <ul>
                       {
@@ -322,8 +367,8 @@ export default function CardDetailsPage() {
                         )
                       }
                     </ul>
-                  </div>
-                  <ActionPanel fields={addTaskFields}  />
+                  </div> */}
+                  <ActionPanel fields={addTaskFields} />
                 </div>
               </div>
             </>
@@ -544,18 +589,41 @@ function TaskItemCheckbox({ task }: { task: TaskWID }) {
         <Squares2X2Icon className=" h-5 w-5" />
         VC
       </div>
-      <div className=" flex-1 grid grid-cols-10 content-center justify-between">
-        <p className="px-2 col-span-2 font-semibold">{task.progress}</p>
-        <p className="font-bold truncate col-span-5">{task.name}</p>
-        <div className="px-1 col-span-2   ">
-          <button className=" inline-flex items-center px-4 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"> Edit</button>
-        </div>
-        <div className="px-1 py-1 flex flex-row justify-center content-center">
-          <input type="checkbox" />
-        </div>
-      </div>
+      <TaskCheckBox task={task} />
     </div>
   )
+}
+
+function TaskCheckBox({ task }: { task: TaskWID }) {
+  let fetcher = useFetcher();
+  let submit = fetcher.submit;
+
+  const handleOnChange = ()=>{
+    let formData = new FormData()
+    formData.append("_action", "toggleTask");
+    formData.append("taskId", task.taskId);
+    submit(formData, {method:"post"})
+  }
+
+
+  return (
+    <fetcher.Form method="post" className=" flex-1 grid grid-cols-10 content-center justify-between">
+      <p className="px-2 col-span-2 font-semibold">{task.progress}</p>
+      <p className="font-bold truncate col-span-5">{task.name}</p>
+      <div className="px-1 col-span-2   ">
+        <button className=" inline-flex items-center px-4 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"> Edit</button>
+      </div>
+      <div className="px-1 py-1 flex flex-row justify-center content-center">
+        <input
+          id={"taskComplete"}
+          name={"taskComplete"}
+          defaultChecked={task.complete} 
+          onChange={handleOnChange}
+          type="checkbox" 
+        />
+      </div>
+    </fetcher.Form>
+  );
 }
 
 function TaskListItem({ task }: { task: TaskWID }) {

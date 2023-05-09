@@ -30,6 +30,9 @@ export const mainDb = {
   users: () =>dataPoint<UserDoc>(`${dbBase}/users/`),
 };
 
+export const getUUID = ()=> mainDb.profiles().doc().id 
+
+
 export const getProfileDoc = async (profileId: string) => {
   const docRef = mainDb.profiles().doc(profileId);
   const docSnap = await docRef.get();

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Bars2Icon, PencilSquareIcon, Squares2X2Icon } from '@heroicons/react/20/solid';
+import { Squares2X2Icon } from '@heroicons/react/20/solid';
 import { Link } from '@remix-run/react';
 
 export function SortVerticalItem(props: {

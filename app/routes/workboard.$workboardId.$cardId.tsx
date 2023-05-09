@@ -117,15 +117,15 @@ export async function action({ params, request }: ActionArgs) {
     if (!schemaCheck.success) {
       return { error: true, errorData: schemaCheck.error.issues }
     }
-    const progressTracker =  {
-      taskOrder:cardDetails.progressTracker?.taskOrder ?? [],
-      tasks:cardDetails.progressTracker?.tasks ?? {},
+    const progressTracker = {
+      taskOrder: cardDetails.progressTracker?.taskOrder ?? [],
+      tasks: cardDetails.progressTracker?.tasks ?? {},
     }
 
     const currentTaskOrder = cardDetails.progressTracker?.taskOrder ?? [];
 
-    if(currentTaskOrder.length < 2){
-      return json({status:404})
+    if (currentTaskOrder.length < 2) {
+      return json({ status: 404 })
     }
 
     const newTaskOrder = moveArrayElement(
@@ -134,7 +134,7 @@ export async function action({ params, request }: ActionArgs) {
       schemaCheck.data.newIndex
     );
 
-    const newProgressTracker = { ...progressTracker, taskOrder: newTaskOrder}
+    const newProgressTracker = { ...progressTracker, taskOrder: newTaskOrder }
 
     await updateCard({
       profileId,
@@ -183,9 +183,30 @@ export async function loader({ params, request }: LoaderArgs) {
 
   const tasklist = progressTracker.taskOrder.map((taskId) => ({ ...progressTracker.tasks[taskId], taskId: taskId }));
 
+  const taskPointOptions = [
+    { label: "10 Points", value:"10"},
+    { label: "20 Points", value:"20"},
+    { label: "30 Points", value:"30"},
+    { label: "50 Points", value:"50"},
+    { label: "80 Points", value:"80"},
+    { label: "130 Points", value:"130"},
+  ];
+  const taskTypeOptions = [
+    { label: "Intial Sketch", value:"IS"},
+    { label: "Detailed Sketch", value:"DS"},
+    { label: "Linework", value:"LW"},
+    { label: "Coloring", value:"CR"},
+    { label: "Lighting & Effects", value:"LE"},
+  ];
+
+  const addTaskFields: Field[] = [
+    {fieldId: "taskTitle", type: "shortText", label:"Task Title"},
+    {fieldId: "taskType", type: "select", label:"Task Type", options: taskTypeOptions},
+    {fieldId: "taskPoints", type: "select", label:"Task Points", options: taskPointOptions},
+  ]
 
 
-  return json({ submissionDoc, reviewStatus, cardDetails, tasklist });
+  return json({ submissionDoc, reviewStatus, cardDetails, tasklist, addTaskFields });
 }
 
 // @ts-ignore
@@ -202,6 +223,7 @@ export default function CardDetailsPage() {
     reviewStatus,
     cardDetails,
     tasklist,
+    addTaskFields,
   } = useLoaderData<typeof loader>();
   const actionData = useLoaderData<typeof action>();
   const navigate = useNavigate();
@@ -286,9 +308,22 @@ export default function CardDetailsPage() {
                   {
                     tasklist.length > 0
                       ? <> <ProgressTaskList tasklist={tasklist} />
-                      <EditTaskOrder tasklist={tasklist} />  </>
+                        <EditTaskOrder tasklist={tasklist} />  </>
                       : <AddDefaultProgressList cardId={cardDetails.cardId} />
                   }
+                  <div>
+                    <h3> Progress 70%</h3>
+                    <ul>
+                      {
+                        tasklist.map((task) =>
+                          <li key={task.taskId} className="py-2">
+                            <TaskItemCheckbox task={task} />
+                          </li>
+                        )
+                      }
+                    </ul>
+                  </div>
+                  <ActionPanel fields={addTaskFields}  />
                 </div>
               </div>
             </>
@@ -336,6 +371,44 @@ export default function CardDetailsPage() {
   );
 }
 
+function ActionPanel(props: { fields: Field[] }) {
+  return (
+    <div className=" max-w-lg sm:col-span-6 overflow-hidden border-2  bg-white shadow sm:rounded-md">
+      <div className="px-4 py-5 sm:p-6">
+        <h3 className="text-base font-semibold leading-6 text-gray-900">
+          Add Task
+        </h3>
+        {/* <div className="mt-2 max-w-xl text-sm text-gray-500">
+          <p>Select a Section To Add</p>
+        </div> */}
+        <Form replace method="POST" className="mt-5 sm:flex sm:items-center">
+          <div className="w-full sm:max-w-xs">
+            {
+              props.fields.map((field) => {
+
+                return (
+
+                  <StackedField key={field.fieldId} defaultValue="" field={field} />
+                )
+              })
+            }
+          </div>
+          <button
+            name="_action"
+            value="addTask"
+            type="submit"
+            className="mt-3 inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:ml-3 sm:mt-0 sm:w-auto"
+          >
+            Add Task
+          </button>
+        </Form>
+      </div>
+    </div>
+  )
+}
+
+
+
 function EditTaskList({ tasklist }: { tasklist: TaskWID[] }) {
 
 
@@ -348,7 +421,7 @@ function EditTaskList({ tasklist }: { tasklist: TaskWID[] }) {
 
             <li key={task.taskId}>
               <OverlayStyle>
-                <TaskListItem task={task}/>
+                <TaskListItem task={task} />
               </OverlayStyle>
             </li>
           )
@@ -457,7 +530,35 @@ function EditTask() {
   )
 }
 
-function TaskListItem({task}: {task:TaskWID}) {
+function TaskItemCheckbox({ task }: { task: TaskWID }) {
+
+  const projectColor = " bg-green-500"
+  return (
+    <div className=" h-12 flex flex-row  border-2 border-slate-400 rounded-lg">
+      <div
+        className={classNames(
+          projectColor,
+          'flex w-16 flex-shrink-0 items-center justify-evenly text-sm font-medium text-white  '
+        )}
+      >
+        <Squares2X2Icon className=" h-5 w-5" />
+        VC
+      </div>
+      <div className=" flex-1 grid grid-cols-10 content-center justify-between">
+        <p className="px-2 col-span-2 font-semibold">{task.progress}</p>
+        <p className="font-bold truncate col-span-5">{task.name}</p>
+        <div className="px-1 col-span-2   ">
+          <button className=" inline-flex items-center px-4 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"> Edit</button>
+        </div>
+        <div className="px-1 py-1 flex flex-row justify-center content-center">
+          <input type="checkbox" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TaskListItem({ task }: { task: TaskWID }) {
 
   return (
     <>

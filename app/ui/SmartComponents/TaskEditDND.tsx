@@ -19,6 +19,11 @@ import { useSubmit } from "@remix-run/react";
 import type { TaskWID } from "~/server/database/workboard.server";
 
 
+// @ts-ignore
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ')
+}
+
 export default function EditTaskOrder({ tasklist }: { tasklist: TaskWID[] }) {
   const [activeTaskId, setActiveTaskId] = useState<string>("");
   let submit = useSubmit();
@@ -114,6 +119,30 @@ function TaskListItem({ task }: { task: TaskWID }) {
     </>
   )
 }
+function TaskItemCheckbox({ task }: { task: TaskWID }) {
+
+  const projectColor= " bg-green-500"
+  return (
+    <>
+      <div
+        className={classNames(
+          projectColor,
+          'flex w-16 flex-shrink-0 items-center justify-center rounded-l-md text-sm font-medium text-white'
+        )}
+      >
+        <Squares2X2Icon />
+        VC
+      </div>
+      <div>
+        <p>30</p>
+        <p>Task Title One</p>
+        <button> Edit</button>
+        <input type="checkbox" />
+      </div>
+    </>
+  )
+}
+
 
 function OverlayStyle(props: {
 

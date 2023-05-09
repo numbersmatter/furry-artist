@@ -12,6 +12,7 @@ export interface Task {
   name: string;
   progress: number;
   complete: boolean;
+  typeId?: string;
 };
 export interface TaskWID extends Task {
   taskId: string;

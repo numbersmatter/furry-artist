@@ -233,7 +233,7 @@ export default function SectionField() {
               >
                 <div className="grid col-span-full space-y-2 ">
 
-                  {options.map(option => <SortableItem key={option.value} id={option.value}>
+                  {options.map(option => <SortableItem displayHandle key={option.value} id={option.value}>
                     <div className="border-2 py-2 px-3">
                       <p>
                         {option.label}

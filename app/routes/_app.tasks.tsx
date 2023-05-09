@@ -1,6 +1,6 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
+import { isRouteErrorResponse, NavLink, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
 import { getUserIfSignedIn } from "~/server/auth.server";
 import { getUserDoc, navigation } from "~/server/database/db.server";
 import { getProfilePageHeaderDoc } from "~/server/database/profile.server";
@@ -113,6 +113,32 @@ export function NavBar({ tabs }: { tabs: { name: string, to: string }[] }) {
       </div>
     </div>
   )
+}
+
+export function ErrorBoundary(){
+  const error = useRouteError();
+  if(isRouteErrorResponse(error)){
+    return (
+      <div>
+        <h1>
+          {error.status} {error.statusText}
+        </h1>
+        <p>{error.data}</p>
+      </div>
+    )
+  } else if ( error instanceof Error ){
+    return (
+      <div>
+        <h1>Error</h1>
+        <p>{error.message}</p>
+        <p>The Stack Trace is:</p>
+        <p>{error.stack}</p>
+      </div>
+    );
+  }else {
+    return <h1>Unknown Error</h1>;
+  }
+
 }
 
 

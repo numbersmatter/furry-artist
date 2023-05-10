@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useState } from "react";
-import { useFetcher, useSubmit } from "@remix-run/react";
+import { Link, useFetcher, useSubmit } from "@remix-run/react";
 import type { TaskWID } from "~/server/database/workboard.server";
 import { TaskSortItem } from "./TaskSortItem";
 
@@ -25,7 +25,7 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(' ')
 }
 
-export default function TaskCheckboxDnd({ tasklist }: { tasklist: TaskWID[] }) {
+export default function TaskCheckboxDnd({ tasklist, projectId }: { tasklist: TaskWID[], projectId: string }) {
   const [activeTaskId, setActiveTaskId] = useState<string>("");
   let submit = useSubmit();
 
@@ -82,7 +82,7 @@ export default function TaskCheckboxDnd({ tasklist }: { tasklist: TaskWID[] }) {
       onDragStart={handleDragStart}
     >
 
-      <div>
+      <div className=" max-w-lg" >
         <h5>Progress {100 * completedProgress / totalSize}%</h5>
         <SortableContext
           items={taskOrder}
@@ -95,7 +95,7 @@ export default function TaskCheckboxDnd({ tasklist }: { tasklist: TaskWID[] }) {
 
                 <li className=" py-1" key={task.taskId}>
                   <TaskSortItem id={task.taskId} >
-                    <TaskCheckBox task={task} />
+                    <TaskCheckBox projectId={projectId} task={task} />
                   </TaskSortItem>
                 </li>
               )
@@ -105,14 +105,14 @@ export default function TaskCheckboxDnd({ tasklist }: { tasklist: TaskWID[] }) {
       </div>
       <DragOverlay>
         <OverlayStyle>
-          <TaskCheckBox task={activeTask} />
+          <TaskCheckBox projectId={projectId} task={activeTask} />
         </OverlayStyle>
       </DragOverlay>
     </DndContext>
   )
 };
 
-function TaskCheckBox({ task }: { task: TaskWID }) {
+function TaskCheckBox({ task, projectId }: { task: TaskWID, projectId:string }) {
   let fetcher = useFetcher();
   let submit = fetcher.submit;
 
@@ -123,13 +123,20 @@ function TaskCheckBox({ task }: { task: TaskWID }) {
     submit(formData, {method:"post"})
   }
 
+  const taskEditlink = `/tasks/projects/${projectId}/id/${task.taskId}`
+
 
   return (
     <fetcher.Form method="post" className=" flex-1 grid grid-cols-10 content-center justify-between">
       <p className="px-2 col-span-2 font-semibold">{task.progress}</p>
       <p className="font-bold truncate col-span-5">{task.name}</p>
       <div className="px-1 col-span-2   ">
-        <button className=" inline-flex items-center px-4 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"> Edit</button>
+        <Link
+          to={taskEditlink} 
+          className=" inline-flex items-center px-4 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+        > 
+          Edit
+        </Link>
       </div>
       <div className="px-1 py-1 flex flex-row justify-center content-center">
         <input

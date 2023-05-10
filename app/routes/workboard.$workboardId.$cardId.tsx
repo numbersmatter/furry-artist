@@ -250,8 +250,9 @@ export async function loader({ params, request }: LoaderArgs) {
     { fieldId: "taskPoints", type: "select", label: "Task Points", options: taskPointOptions },
   ]
 
+  const projectId = params.cardId ?? "no-id";
 
-  return json({ submissionDoc, reviewStatus, cardDetails, tasklist, addTaskFields });
+  return json({ submissionDoc, reviewStatus, cardDetails, tasklist, addTaskFields, projectId });
 }
 
 // @ts-ignore
@@ -269,6 +270,7 @@ export default function CardDetailsPage() {
     cardDetails,
     tasklist,
     addTaskFields,
+    projectId,
   } = useLoaderData<typeof loader>();
   const actionData = useLoaderData<typeof action>();
   const navigate = useNavigate();
@@ -353,7 +355,7 @@ export default function CardDetailsPage() {
                   {
                     tasklist.length > 0
                       ? <> 
-                        <TaskCheckboxDnd tasklist={tasklist} />  </>
+                        <TaskCheckboxDnd projectId={projectId} tasklist={tasklist} />  </>
                       : <AddDefaultProgressList cardId={cardDetails.cardId} />
                   }
                   {/* <div>

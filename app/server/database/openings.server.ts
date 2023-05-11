@@ -125,6 +125,66 @@ export const createNewOpening = async ({
   await docRef.set(docData);
 };
 
+export const createArtistOpening = async ({
+  profileId,
+  formId,
+}: {
+  profileId: string | undefined;
+  formId: string | undefined;
+}) => {
+  if (!profileId || !formId) {
+    return{error: "profileId or formId not found"};
+  }
+
+  const formDoc = await getFormById({ profileId, formId });
+  if (!formDoc) {
+    return {error: "form not found"};
+  }
+
+  const sectionPromises = formDoc.sectionOrder.map((sectionId) =>
+    getFormSectionById({ profileId, sectionId })
+  );
+
+  const sectionsRaw = await Promise.all(sectionPromises);
+
+  const sections = sectionsRaw.map((section) => {
+    if (!section) {
+      return {
+        sectionId:"none",
+        name: "Error",
+        text: "Form section was not found",
+        fields:[],
+        type: "fields",
+      };
+    }
+    return {
+      sectionId: section.sectionId,
+      name: section.name,
+      text: section.text,
+      fields: section.fieldOrder.map((fieldId) => section.fieldData[fieldId]),
+      type: section.type ?? "fields",
+    };
+
+  })
+
+  const docRef = openingsDb.openings(profileId).doc();
+
+  const docData: OpeningDoc = {
+    formId,
+    profileId,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+    status: "closed",
+    formName: formDoc.name,
+    sectionOrder: formDoc.sectionOrder,
+    // @ts-ignore
+    sections,
+  };
+
+  await docRef.set(docData);
+  return ({ openId: docRef.id})
+};
+
 export const getOpenForms = async ({
   profileId,
 }: {

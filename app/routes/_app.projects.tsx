@@ -1,6 +1,6 @@
 import type { ActionArgs, LoaderArgs} from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
+import { isRouteErrorResponse, NavLink, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
 import { getUserDoc } from "~/server/database/db.server";
 import { getProfilePageHeaderDoc } from "~/server/database/profile.server";
 import { baseLoader } from "~/server/user.server";
@@ -53,7 +53,7 @@ function FormsHeader(props: { displayName: string }) {
   return (
     <header className="bg-gray-50 py-8">
       <h1 className="mt-2 ml-4 text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-        {`${props.displayName}'s Forms`}
+        {`${props.displayName}'s Projects`}
       </h1>
       <NavBar tabs={tabs} />
     </header>
@@ -62,9 +62,8 @@ function FormsHeader(props: { displayName: string }) {
 
 
 const tabs = [
-  { name: 'Forms List', to: '/forms', },
-  { name: 'Sections', to: '/forms/sections', },
-  { name: 'Form', to: '/forms/open-forms', },
+  { name: 'Project List', to: '/projects', },
+  { name: 'Image Upload', to: '/projects/image-upload', },
 ]
 // @ts-ignore
 function classNames(...classes) {
@@ -99,4 +98,31 @@ export function NavBar({ tabs }: { tabs: { name: string, to: string }[] }) {
       </div>
     </div>
   )
+}
+
+
+export function ErrorBoundary(){
+  const error = useRouteError();
+  if(isRouteErrorResponse(error)){
+    return (
+      <div>
+        <h1>
+          {error.status} {error.statusText}
+        </h1>
+        <p>{error.data}</p>
+      </div>
+    )
+  } else if ( error instanceof Error ){
+    return (
+      <div>
+        <h1>Error</h1>
+        <p>{error.message}</p>
+        <p>The Stack Trace is:</p>
+        <p>{error.stack}</p>
+      </div>
+    );
+  }else {
+    return <h1>Unknown Error</h1>;
+  }
+
 }

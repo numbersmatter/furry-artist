@@ -216,7 +216,7 @@ export async function loader({ params, request }: LoaderArgs) {
   const submissionDoc = await getSubmissionbyId({ profileId, submissionId: cardId });
 
   const projectTypeDoc = await getProjectTypeDoc(profileId)
-  console.log(projectTypeDoc)
+  
 
   const cardDetails = await getCardById({ profileId, cardId });
   if (!cardDetails) {

@@ -25,6 +25,7 @@ const navigation = [
   { name: 'Forms', href: '/forms', icon: ClipboardDocumentIcon, current: false },
   { name: 'Requests', href: '/submissions', icon: InboxIcon, current: false },
   { name: 'Workboard', href: '/workboard', icon: BriefcaseIcon, current: false },
+  { name: 'Projects', href: '/projects', icon: BriefcaseIcon, current: false },
 ]
 const teams = [
   { id: 1, name: 'Heroicons', href: '#', initial: 'H', current: false },

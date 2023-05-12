@@ -18,6 +18,11 @@ export const dataPoint = <T extends FirebaseFirestore.DocumentData>(
 ) => getFirestore().collection(collectionPath).withConverter(converter<T>());
 
 
+export interface ProjectTypes {
+  typeOrder: string[],
+  types: { [key:string]: {initials: string, label: string}}
+}
+
 export interface UserDoc {
   defaultProfile: string,
   profileArray: string[],
@@ -28,10 +33,22 @@ export const dbBase = "database/version2";
 export const mainDb = {
   profiles: () =>dataPoint(`${dbBase}/profiles/`),
   users: () =>dataPoint<UserDoc>(`${dbBase}/users/`),
+  assets: (profileId:string)=> dataPoint(`${dbBase}/profiles/${profileId}/profile_assets`)
 };
 
 export const getUUID = ()=> mainDb.profiles().doc().id 
 
+export const getProjectTypeDoc = async ( profileId: string)=>{
+  const docRef = mainDb.assets(profileId).doc("projectTypes")
+  const docSnap = await docRef.get();
+  const docData = docSnap.data();
+
+  if(!docData){
+    return undefined
+  }
+  // @ts-ignore
+  return docData as ProjectTypes
+}
 
 export const getProfileDoc = async (profileId: string) => {
   const docRef = mainDb.profiles().doc(profileId);

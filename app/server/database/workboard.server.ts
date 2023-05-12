@@ -27,6 +27,12 @@ export interface ColumnDetailsWID extends ColumnDetails {
   columnId: string;
 }
 
+interface ImageItem {
+  imageId: string;
+  url: string;
+  description: string;
+}
+
 export interface CardDetails {
   cardTitle: string;
   cardType: string;
@@ -36,6 +42,7 @@ export interface CardDetails {
   userNotes?: string;
   progressTracker?: ProgressTracker;
   invoiced?: number; 
+  imageArray?: ImageItem[] 
 }
 
 export interface StandardProject  {
@@ -121,6 +128,24 @@ export const updateCard = async ({
   // @ts-ignore
   await cardRef.update(cardDetails);
 };
+
+export const updateProjectImage = async ({
+  profileId,
+  cardId,
+  imageItem,
+}: {
+  profileId: string;
+  cardId: string;
+  imageItem: ImageItem;
+})=>{
+
+  const cardRef = workboardDb.cards(profileId).doc(cardId);
+
+  const updateData = {
+    imageArray: FieldValue.arrayUnion(imageItem)
+  }
+  return await cardRef.update(updateData);
+}
 
 export const updateColumnData = async ({
   profileId,

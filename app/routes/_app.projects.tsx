@@ -64,6 +64,7 @@ function FormsHeader(props: { displayName: string }) {
 const tabs = [
   { name: 'Project List', to: '/projects', },
   { name: 'Image Upload', to: '/projects/image-upload', },
+  { name: 'Create Project', to: '/projects/create-project', },
 ]
 // @ts-ignore
 function classNames(...classes) {

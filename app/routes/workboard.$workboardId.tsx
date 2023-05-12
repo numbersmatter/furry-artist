@@ -33,6 +33,7 @@ import { Dialog } from "@headlessui/react";
 import { initializeApp } from "firebase/app";
 import { z } from "zod";
 import { getFirestore } from "firebase-admin/firestore";
+import { NavBar } from "./_app.projects";
 
 export async function action({ params, request }: ActionArgs) {
   let { profileId, userRecord } = await baseLoader(request);
@@ -221,6 +222,11 @@ export default function WorkboardTemplate() {
     })
   );
 
+  const tabs = [
+    { name: 'Add Column', to: 'add-column', },
+    { name: 'Add Card', to: 'add-project', },
+    ]
+
 
   return (
     <>
@@ -279,9 +285,7 @@ export default function WorkboardTemplate() {
           >
             Workboard
           </h1>
-          <Link to="add-column">
-            add column
-          </Link>
+         <NavBar tabs={tabs} />
           <div>
             {
               actionData ?

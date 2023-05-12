@@ -5,7 +5,7 @@ import { json, redirect } from "@remix-run/node";
 import { Form, Link, useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
 import { useEffect, useId, useState } from "react";
 import { z } from "zod";
-import { getUUID } from "~/server/database/db.server";
+import { getProjectTypeDoc, getUUID } from "~/server/database/db.server";
 import { moveArrayElement } from "~/server/database/forms.server";
 import { getOpeningById, SectionData } from "~/server/database/openings.server";
 import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
@@ -13,6 +13,7 @@ import { addSubmissionToWorkboard, getCardById, ProgressTracker, Task, TaskWID, 
 import { baseLoader } from "~/server/user.server";
 import TaskCheckboxDnd from "~/ui/SmartComponents/TaskCheckboxDnd";
 import EditTaskOrder from "~/ui/SmartComponents/TaskEditDND";
+import UploadImageWidget from "~/ui/SmartComponents/UploadImageWidget";
 import SelectField from "~/ui/StackedFields/SelectField";
 import StackedField, { Field } from "~/ui/StackedFields/StackFields";
 import TextAreaField from "~/ui/StackedFields/TextArea";
@@ -145,8 +146,8 @@ export async function action({ params, request }: ActionArgs) {
     })
     return json({ success: true })
   }
-  
-  if( _action ==="addTask"){
+
+  if (_action === "addTask") {
     const addTaskScheme = z.object({
       taskTitle: z.string(),
       taskType: z.string(),
@@ -155,8 +156,8 @@ export async function action({ params, request }: ActionArgs) {
 
     const schemaCheck = addTaskScheme.safeParse(values);
 
-    if(!schemaCheck.success){
-      return json({error: true, issues:schemaCheck.error.issues})
+    if (!schemaCheck.success) {
+      return json({ error: true, issues: schemaCheck.error.issues })
     }
 
 
@@ -164,28 +165,28 @@ export async function action({ params, request }: ActionArgs) {
 
     const taskOrder = cardDetails.progressTracker?.taskOrder ?? [];
     const tasks = cardDetails.progressTracker?.tasks ?? {};
-    
+
     const newTaskOrder = [...taskOrder, newTaskId];
-    const newTasks = { 
-      ...tasks, 
-      [newTaskId]: { 
-        complete: false, 
-        name: schemaCheck.data.taskTitle ,
+    const newTasks = {
+      ...tasks,
+      [newTaskId]: {
+        complete: false,
+        name: schemaCheck.data.taskTitle,
         progress: schemaCheck.data.taskPoints
-       }
       }
-    
+    }
+
     const newProgressTracker = {
       taskOrder: newTaskOrder,
       tasks: newTasks,
     };
-    
+
     await updateCard({
       profileId,
       cardId: params.cardId as string,
       cardDetails: { progressTracker: newProgressTracker }
     })
-    
+
     return json({ success: true })
   }
 
@@ -214,6 +215,9 @@ export async function loader({ params, request }: LoaderArgs) {
 
   const submissionDoc = await getSubmissionbyId({ profileId, submissionId: cardId });
 
+  const projectTypeDoc = await getProjectTypeDoc(profileId)
+  console.log(projectTypeDoc)
+
   const cardDetails = await getCardById({ profileId, cardId });
   if (!cardDetails) {
     return redirect(`/workboard/${profileId}`)
@@ -236,7 +240,7 @@ export async function loader({ params, request }: LoaderArgs) {
     { label: "80 Points", value: "80" },
     { label: "130 Points", value: "130" },
   ];
-  const taskTypeOptions = [
+  const defaulteTaskTypeOptions = [
     { label: "Intial Sketch", value: "IS" },
     { label: "Detailed Sketch", value: "DS" },
     { label: "Linework", value: "LW" },
@@ -244,9 +248,18 @@ export async function loader({ params, request }: LoaderArgs) {
     { label: "Lighting & Effects", value: "LE" },
   ];
 
+  const taskTypesOptions = projectTypeDoc 
+  ? projectTypeDoc.typeOrder.map((typeId)=>{
+    const type = projectTypeDoc.types[typeId] ?? { label: "error", initials: "ER"}
+
+    return { label: type.label, value: typeId}
+  })
+  :defaulteTaskTypeOptions
+
+
   const addTaskFields: Field[] = [
     { fieldId: "taskTitle", type: "shortText", label: "Task Title" },
-    { fieldId: "taskType", type: "select", label: "Task Type", options: taskTypeOptions },
+    { fieldId: "taskType", type: "select", label: "Task Type", options: taskTypesOptions },
     { fieldId: "taskPoints", type: "select", label: "Task Points", options: taskPointOptions },
   ]
 
@@ -274,7 +287,18 @@ export default function CardDetailsPage() {
   } = useLoaderData<typeof loader>();
   const actionData = useLoaderData<typeof action>();
   const navigate = useNavigate();
+  const imageArray = cardDetails.imageArray ?? [];
+  const defaultImage="https://res.cloudinary.com/db1vvwzaa/image/upload/v1683839201/milachu92/dtrgv9x20tyn34xiijwz.png"
 
+  const firstImage = imageArray.length > 0 
+    ? imageArray[0]
+    : {
+      url: defaultImage,
+      imageId: "default",
+      description: "default image"
+    }
+
+  const [imageUrl, setImageUrl] = useState(firstImage.url)
 
   return (
     <Dialog
@@ -300,50 +324,6 @@ export default function CardDetailsPage() {
                 Back
               </button>
             </Dialog.Title>
-            {/* <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-             
-              <h3 className="mt-1 max-w-2xl text-xl text-gray-500">
-                Request Details
-              </h3>
-              <p>
-              </p>
-            </div> */}
-            {/* <Form
-              method="POST"
-              replace
-              className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4 rounded-md border-2 border-gray-200"
-            >
-              <TextField 
-                fieldId="userTitle"
-                label="Title"
-                defaultValue={cardDetails?.userTitle ?? cardDetails.cardTitle}
-              />
-              <TextAreaField
-                fieldId="userNotes"
-                label="notes"
-                defaultValue={cardDetails?.userNotes ?? ""}
-              />
-              <div
-                className="flex justify-end space-x-3"
-
-              >
-
-              <button
-                type="submit"
-                name="_action"
-                value="saveUserNote"
-                >
-                save
-              </button>
-              <Link
-                to="/workboard"
-                className="border-2 py-1 px-2 text-gray-500"
-              >
-                close
-              </Link>
-                </div>
-
-            </Form> */}
             <>
               <div className="overflow-hidden bg-white shadow sm:rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
@@ -351,10 +331,26 @@ export default function CardDetailsPage() {
                     title={cardDetails.userTitle ?? cardDetails.cardTitle}
                     text={cardDetails.userNotes ?? ""}
                   />
+                  <div>
+                    <h5>{imageArray.length} Images</h5>
+                    {
+                      imageArray.length < 1 
+                      ? null
+                      :
+                    <div key={"1"} className=" max-w-md">
+                      <img src={imageArray[0].url} alt="testimage" />
+                    </div>
+                    }
+
+                    <UploadImageWidget action="/api/project/image-upload">
+                      <input hidden readOnly name="cardId" value={projectId} />
+                    </UploadImageWidget>
+
+                  </div>
 
                   {
                     tasklist.length > 0
-                      ? <> 
+                      ? <>
                         <TaskCheckboxDnd projectId={projectId} tasklist={tasklist} />  </>
                       : <AddDefaultProgressList cardId={cardDetails.cardId} />
                   }
@@ -432,9 +428,7 @@ function ActionPanel(props: { fields: Field[] }) {
           <div className="w-full sm:max-w-xs">
             {
               props.fields.map((field) => {
-
                 return (
-
                   <StackedField key={field.fieldId} defaultValue="" field={field} />
                 )
               })
@@ -600,11 +594,11 @@ function TaskCheckBox({ task }: { task: TaskWID }) {
   let fetcher = useFetcher();
   let submit = fetcher.submit;
 
-  const handleOnChange = ()=>{
+  const handleOnChange = () => {
     let formData = new FormData()
     formData.append("_action", "toggleTask");
     formData.append("taskId", task.taskId);
-    submit(formData, {method:"post"})
+    submit(formData, { method: "post" })
   }
 
 
@@ -619,9 +613,9 @@ function TaskCheckBox({ task }: { task: TaskWID }) {
         <input
           id={"taskComplete"}
           name={"taskComplete"}
-          defaultChecked={task.complete} 
+          defaultChecked={task.complete}
           onChange={handleOnChange}
-          type="checkbox" 
+          type="checkbox"
         />
       </div>
     </fetcher.Form>

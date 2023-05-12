@@ -9,7 +9,7 @@ import {
   BriefcaseIcon
 } from '@heroicons/react/24/outline'
 import { Link, NavLink, Outlet } from '@remix-run/react'
-import { ArrowLeftOnRectangleIcon } from '@heroicons/react/20/solid'
+import { ArrowLeftOnRectangleIcon, DocumentDuplicateIcon } from '@heroicons/react/20/solid'
 import { Form } from '@remix-run/react'
 
 const navigation = [
@@ -17,13 +17,21 @@ const navigation = [
   { name: 'Forms', href: '/forms', icon: ClipboardDocumentIcon, current: false },
   { name: 'Requests', href: '/submissions', icon: InboxIcon, current: false },
   { name: 'Workboard', href: '/workboard', icon: BriefcaseIcon, current: false },
-  // { name: 'Documents', href: '#', icon: DocumentDuplicateIcon, current: false },
+  { name: 'Projects', href: '/projects', icon: DocumentDuplicateIcon, current: false },
   // { name: 'Reports', href: '#', icon: ChartPieIcon, current: false },
 ]
-const teams = [
-  { id: 1, name: 'Heroicons', href: '#', initial: 'H', current: false },
-  { id: 2, name: 'Tailwind Labs', href: '#', initial: 'T', current: false },
-  { id: 3, name: 'Workcation', href: '#', initial: 'W', current: false },
+
+interface ITeam{
+  id: number,
+  name: string,
+  href:string,
+  initial: string,
+  current: boolean,
+}
+
+const teams: ITeam[] = [
+  // { id: 2, name: 'Tailwind Labs', href: '#', initial: 'T', current: false },
+  // { id: 3, name: 'Workcation', href: '#', initial: 'W', current: false },
 ]
 
 // @ts-ignore

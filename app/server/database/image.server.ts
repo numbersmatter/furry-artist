@@ -1,3 +1,4 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { dataPoint, dbBase } from "./db.server";
 
 export interface ImageItem {
@@ -46,4 +47,24 @@ export const setImageDoc = async ({
   const docRef = imageDb.image(profileId).doc(imageDocId);
 
   return await docRef.set(data);
+};
+export const updateImageDoc = async ({
+  profileId,
+  imageDocId,
+  data,
+}: {
+  profileId: string | undefined;
+  imageDocId: string | undefined;
+  data: ImageItem;
+}) => {
+  if (!profileId || !imageDocId) {
+    return undefined;
+  }
+  const docRef = imageDb.image(profileId).doc(imageDocId);
+
+  const updateData ={
+    imageArray: FieldValue.arrayUnion(data)
+  }
+
+  return await docRef.update(updateData);
 };

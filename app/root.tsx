@@ -27,7 +27,9 @@ export default function App() {
       </head>
       <body className="bg-slate-200 min-h-screen flex">
         <Outlet />
-        <ScrollRestoration />
+        <ScrollRestoration
+          getKey={(location)=>{ return location.pathname}} 
+        />
         <Scripts />
         <LiveReload />
       </body>

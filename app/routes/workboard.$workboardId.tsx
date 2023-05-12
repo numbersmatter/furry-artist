@@ -93,7 +93,7 @@ export async function loader({ params, request }: LoaderArgs) {
     workboardId: params.workboardId
   });
   if (!workboardDoc) {
-    return redirect('/workboard');
+    throw new Error("No workboard id");
   }
 
   const boardCards = await getCardsforWorkboard({

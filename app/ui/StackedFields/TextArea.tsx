@@ -13,7 +13,7 @@ export default function TextAreaField(
 
   return (
     <div className="sm:col-span-6">
-      <label htmlFor="about" className="block text-sm font-medium leading-6 text-gray-900">
+      <label htmlFor={props.fieldId} className="block text-sm font-medium leading-6 text-gray-900">
         {props.label}
       </label>
       <div className="mt-2">

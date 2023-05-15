@@ -1,23 +1,23 @@
 import { Dialog, Switch } from "@headlessui/react";
-import { ChevronLeftIcon, PencilSquareIcon, Squares2X2Icon } from "@heroicons/react/20/solid";
+import { ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon, Squares2X2Icon } from "@heroicons/react/20/solid";
 import { ActionArgs, LoaderArgs, Response } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
-import { useEffect, useId, useState } from "react";
+import { useEffect,  useState } from "react";
 import { z } from "zod";
 import { getProjectTypeDoc, getUUID } from "~/server/database/db.server";
 import { moveArrayElement } from "~/server/database/forms.server";
-import { getOpeningById, SectionData } from "~/server/database/openings.server";
-import { archiveSubmission, changeReviewStatus, getReviewStatusByIntentId, getSectionResponses, getSubmissionbyId, getSubmissionStatusByIntentId, SubmittedSection } from "~/server/database/submission.server";
-import { addSubmissionToWorkboard, getCardById, ProgressTracker, Task, TaskWID, updateCard } from "~/server/database/workboard.server";
+import type { ImageItem } from "~/server/database/image.server";
+import type {  SectionData } from "~/server/database/openings.server";
+import type {  SubmittedSection } from "~/server/database/submission.server";
+import {  getReviewStatusByIntentId,  getSubmissionbyId } from "~/server/database/submission.server";
+import type { ProgressTracker,  TaskWID} from "~/server/database/workboard.server";
+import {  getCardById, updateCard } from "~/server/database/workboard.server";
 import { baseLoader } from "~/server/user.server";
 import TaskCheckboxDnd from "~/ui/SmartComponents/TaskCheckboxDnd";
-import EditTaskOrder from "~/ui/SmartComponents/TaskEditDND";
 import UploadImageWidget from "~/ui/SmartComponents/UploadImageWidget";
-import SelectField from "~/ui/StackedFields/SelectField";
-import StackedField, { Field } from "~/ui/StackedFields/StackFields";
-import TextAreaField from "~/ui/StackedFields/TextArea";
-import TextField from "~/ui/StackedFields/TextField";
+import type { Field } from "~/ui/StackedFields/StackFields";
+import StackedField from "~/ui/StackedFields/StackFields";
 
 export async function action({ params, request }: ActionArgs) {
   const { profileId, userRecord } = await baseLoader(request);
@@ -216,7 +216,7 @@ export async function loader({ params, request }: LoaderArgs) {
   const submissionDoc = await getSubmissionbyId({ profileId, submissionId: cardId });
 
   const projectTypeDoc = await getProjectTypeDoc(profileId)
-  
+
 
   const cardDetails = await getCardById({ profileId, cardId });
   if (!cardDetails) {
@@ -248,13 +248,13 @@ export async function loader({ params, request }: LoaderArgs) {
     { label: "Lighting & Effects", value: "LE" },
   ];
 
-  const taskTypesOptions = projectTypeDoc 
-  ? projectTypeDoc.typeOrder.map((typeId)=>{
-    const type = projectTypeDoc.types[typeId] ?? { label: "error", initials: "ER"}
+  const taskTypesOptions = projectTypeDoc
+    ? projectTypeDoc.typeOrder.map((typeId) => {
+      const type = projectTypeDoc.types[typeId] ?? { label: "error", initials: "ER" }
 
-    return { label: type.label, value: typeId}
-  })
-  :defaulteTaskTypeOptions
+      return { label: type.label, value: typeId }
+    })
+    : defaulteTaskTypeOptions
 
 
   const addTaskFields: Field[] = [
@@ -288,9 +288,9 @@ export default function CardDetailsPage() {
   const actionData = useLoaderData<typeof action>();
   const navigate = useNavigate();
   const imageArray = cardDetails.imageArray ?? [];
-  const defaultImage="https://res.cloudinary.com/db1vvwzaa/image/upload/v1683839201/milachu92/dtrgv9x20tyn34xiijwz.png"
+  const defaultImage = "https://res.cloudinary.com/db1vvwzaa/image/upload/v1683839201/milachu92/dtrgv9x20tyn34xiijwz.png"
 
-  const firstImage = imageArray.length > 0 
+  const firstImage = imageArray.length > 0
     ? imageArray[0]
     : {
       url: defaultImage,
@@ -332,15 +332,7 @@ export default function CardDetailsPage() {
                     text={cardDetails.userNotes ?? ""}
                   />
                   <div>
-                    <h5>{imageArray.length} Images</h5>
-                    {
-                      imageArray.length < 1 
-                      ? null
-                      :
-                    <div key={"1"} className=" max-w-md">
-                      <img src={imageArray[0].url} alt="testimage" />
-                    </div>
-                    }
+                    <ImageArrayDisplay imageList={imageArray} />
 
                     <UploadImageWidget action="/api/project/image-upload">
                       <input hidden readOnly name="cardId" value={projectId} />
@@ -412,6 +404,60 @@ export default function CardDetailsPage() {
 
     </Dialog>
   );
+}
+
+function ImageArrayDisplay(props: { imageList: ImageItem[] }) {
+  const [imageIndex, setImageIndex] = useState<number>(0);
+  const imageList = props.imageList
+  const arrayLength = imageList.length;
+  const incrementUp = (currentIndex: number) => {
+    const newIndex = currentIndex + 1;
+    if (newIndex < arrayLength) {
+      return setImageIndex(newIndex)
+    };
+
+    return setImageIndex(0)
+  };
+
+  const incrementDown = (currentIndex: number) => {
+    const newIndex = currentIndex - 1;
+    if (newIndex < 0) {
+      return setImageIndex(arrayLength - 1)
+    };
+    return setImageIndex(newIndex)
+  };
+
+  return <>
+    <h5>{arrayLength} Images</h5>
+    {
+      arrayLength < 1
+        ? null
+        :
+        <div key={"1"} className=" max-w-md">
+          <img src={imageList[imageIndex].url} alt="testimage" />
+          {
+            arrayLength > 1
+              ? <>
+                <div className="flex flex-row justify-center">
+                  <button
+                    onClick={()=> incrementDown(imageIndex)}
+                    >
+                    <ChevronLeftIcon className=" h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={()=> incrementUp(imageIndex)}
+                  >
+                    <ChevronRightIcon className=" h-5 w-5" />
+                  </button>
+                </div>
+              </>
+              : null
+          }
+        </div>
+    }
+
+  </>
+
 }
 
 function ActionPanel(props: { fields: Field[] }) {
@@ -871,11 +917,12 @@ function TitleNotesForm({ title, text, changeEdit }: { title: string, text: stri
       <div
         className="max-w-lg"
       >
-        <label className="text-sm">
+        <label htmlFor="userNotes" className="text-sm">
           Personal Notes
         </label>
         <textarea
           name="userNotes"
+          id="userNotes"
           rows={4}
           defaultValue={text}
           className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
@@ -957,7 +1004,7 @@ function TaskItem({ task, totalSize }: { task: TaskWID, totalSize: number }) {
         />
       </div>
       <div className="ml-3 text-sm leading-6">
-        <label htmlFor={task.taskId} className="font-medium text-gray-900">
+        <label  className="font-medium text-gray-900">
           {task.name}
         </label>{' '}
         <span id={`${task.taskId}-description`} className="text-gray-500">
